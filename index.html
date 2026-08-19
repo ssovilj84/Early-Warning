@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Early Warning Serbia</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+    />
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        .header {
+            padding: 14px 18px;
+            background: white;
+            border-bottom: 1px solid #d9dde2;
+        }
+
+        .header h1 {
+            margin: 0 0 4px 0;
+            font-size: 22px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 18px;
+            background: white;
+            border-bottom: 1px solid #d9dde2;
+        }
+
+        .layer-button {
+            border: 1px solid #bbb;
+            background: #fff;
+            border-radius: 7px;
+            padding: 9px 13px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .layer-button:hover {
+            background: #f0f0f0;
+        }
+
+        .layer-button.active {
+            background: #222;
+            color: white;
+            border-color: #222;
+        }
+
+        #map {
+            height: calc(100vh - 150px);
+            min-height: 520px;
+            width: 100%;
+        }
+
+        .legend {
+            background: white;
+            padding: 10px 12px;
+            border-radius: 6px;
+            line-height: 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.25);
+            font-size: 13px;
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .legend-box {
+            width: 18px;
+            height: 14px;
+            border: 1px solid #777;
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 7px;
+        }
+
+        .popup-row {
+            margin: 3px 0;
+        }
+
+        @media (max-width: 700px) {
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .layer-button {
+                flex: 1 1 45%;
+            }
+
+            #map {
+                height: 70vh;
+                min-height: 480px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>Рано упозоравање — Србија</h1>
+
+    <div class="subtitle">
+        GEFS ensemble | validno 25.08.2026. 12 UTC | +156 h
+    </div>
+</div>
+
+<div class="controls">
+
+    <button
+        class="layer-button active"
+        data-layer="p_thunder"
+    >
+        ⚡ Грмљавина
+    </button>
+
+    <button
+        class="layer-button"
+        data-layer="p_hail_env"
+    >
+        🧊 Град
+    </button>
+
+    <button
+        class="layer-button"
+        data-layer="p_large_hail"
+    >
+        🧊 Крупан град
+    </button>
+
+    <button
+        class="layer-button"
+        data-layer="p_severe_hail"
+    >
+        ⚠ Јак град
+    </button>
+
+</div>
+
+<div id="map"></div>
+
+
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+></script>
+
+<script>
+
+let currentLayer = "p_thunder";
+let geojsonLayer = null;
+
+const map = L.map("map", {
+    zoomControl: true
+}).setView([44.0, 20.8], 7);
+
+
+/* ============================================================
+   PODLOGA
+   ============================================================ */
+
+L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+        maxZoom: 19,
+        attribution:
+            '&copy; OpenStreetMap contributors'
+    }
+).addTo(map);
+
+
+/* ============================================================
+   BOJE VEROVATNOĆE
+   ============================================================ */
+
+function getProbabilityColor(value) {
+
+    if (value === null || value === undefined || isNaN(value)) {
+        return "#cccccc";
+    }
+
+    if (value >= 50) {
+        return "#7b3294";
+    }
+
+    if (value >= 30) {
+        return "#d7191c";
+    }
+
+    if (value >= 20) {
+        return "#fdae61";
+    }
+
+    if (value >= 10) {
+        return "#ffffbf";
+    }
+
+    return "#a6d96a";
+}
+
+
+/* ============================================================
+   STIL OPŠTINE
+   ============================================================ */
+
+function styleFeature(feature) {
+
+    const value = Number(
+        feature.properties[currentLayer] ?? 0
+    );
+
+    return {
+        fillColor: getProbabilityColor(value),
+        weight: 1,
+        opacity: 1,
+        color: "#555",
+        fillOpacity: 0.72
+    };
+}
+
+
+/* ============================================================
+   POPUP
+   ============================================================ */
+
+function popupContent(properties) {
+
+    const municipality =
+        properties.Value_sc ||
+        properties.Value_sl ||
+        properties.Value_e ||
+        "Општина";
+
+    return `
+        <div class="popup-title">
+            ${municipality}
+        </div>
+
+        <div class="popup-row">
+            ⚡ Грмљавина:
+            <b>${formatProbability(properties.p_thunder)}</b>
+        </div>
+
+        <div class="popup-row">
+            🧊 Hail environment:
+            <b>${formatProbability(properties.p_hail_env)}</b>
+        </div>
+
+        <div class="popup-row">
+            🧊 Large hail:
+            <b>${formatProbability(properties.p_large_hail)}</b>
+        </div>
+
+        <div class="popup-row">
+            ⚠ Severe hail:
+            <b>${formatProbability(properties.p_severe_hail)}</b>
+        </div>
+
+        <hr>
+
+        <div class="popup-row">
+            CAPE:
+            <b>${formatNumber(properties.cape_med_max, 0)} J/kg</b>
+        </div>
+
+        <div class="popup-row">
+            Shear 850–500:
+            <b>${formatNumber(properties.shear_med_max, 1)} m/s</b>
+        </div>
+
+        <div class="popup-row">
+            RH700:
+            <b>${formatNumber(properties.rh700_med_max, 0)}%</b>
+        </div>
+
+        <div class="popup-row">
+            GEFS grid tačaka:
+            <b>${properties.grid_points ?? "-"}</b>
+        </div>
+
+        <div class="popup-row">
+            Buffer:
+            <b>${properties.buffer_km ?? 25} km</b>
+        </div>
+    `;
+}
+
+
+function formatProbability(value) {
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "-";
+    }
+
+    return number.toFixed(1) + "%";
+}
+
+
+function formatNumber(value, decimals) {
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "-";
+    }
+
+    return number.toFixed(decimals);
+}
+
+
+/* ============================================================
+   HOVER
+   ============================================================ */
+
+function highlightFeature(event) {
+
+    const layer = event.target;
+
+    layer.setStyle({
+        weight: 3,
+        color: "#222",
+        fillOpacity: 0.85
+    });
+
+    layer.bringToFront();
+}
+
+
+function resetHighlight(event) {
+
+    if (geojsonLayer) {
+        geojsonLayer.resetStyle(event.target);
+    }
+}
+
+
+/* ============================================================
+   FEATURE INTERAKCIJA
+   ============================================================ */
+
+function onEachFeature(feature, layer) {
+
+    layer.bindPopup(
+        popupContent(feature.properties),
+        {
+            maxWidth: 330
+        }
+    );
+
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight
+    });
+}
+
+
+/* ============================================================
+   UČITAVANJE GEOJSON
+   ============================================================ */
+
+fetch(
+    "data/municipalities_f156_convective.geojson"
+)
+.then(response => {
+
+    if (!response.ok) {
+        throw new Error(
+            "GeoJSON nije pronađen."
+        );
+    }
+
+    return response.json();
+})
+.then(data => {
+
+    geojsonLayer = L.geoJSON(
+        data,
+        {
+            style: styleFeature,
+            onEachFeature: onEachFeature
+        }
+    ).addTo(map);
+
+    map.fitBounds(
+        geojsonLayer.getBounds(),
+        {
+            padding: [15, 15]
+        }
+    );
+
+})
+.catch(error => {
+
+    console.error(error);
+
+    alert(
+        "Greška pri učitavanju GeoJSON fajla. " +
+        "Pokreni stranicu preko lokalnog web servera."
+    );
+});
+
+
+/* ============================================================
+   PROMENA SLOJA
+   ============================================================ */
+
+document
+.querySelectorAll(".layer-button")
+.forEach(button => {
+
+    button.addEventListener(
+        "click",
+        function() {
+
+            currentLayer =
+                this.dataset.layer;
+
+            document
+                .querySelectorAll(
+                    ".layer-button"
+                )
+                .forEach(btn =>
+                    btn.classList.remove(
+                        "active"
+                    )
+                );
+
+            this.classList.add(
+                "active"
+            );
+
+            if (geojsonLayer) {
+
+                geojsonLayer.setStyle(
+                    styleFeature
+                );
+
+            }
+        }
+    );
+});
+
+
+/* ============================================================
+   LEGENDA
+   ============================================================ */
+
+const legend = L.control({
+    position: "bottomright"
+});
+
+legend.onAdd = function() {
+
+    const div =
+        L.DomUtil.create(
+            "div",
+            "legend"
+        );
+
+    div.innerHTML = `
+        <b>Верovatноća</b>
+
+        <div class="legend-row">
+            <span
+                class="legend-box"
+                style="background:#a6d96a">
+            </span>
+            &lt; 10%
+        </div>
+
+        <div class="legend-row">
+            <span
+                class="legend-box"
+                style="background:#ffffbf">
+            </span>
+            10–20%
+        </div>
+
+        <div class="legend-row">
+            <span
+                class="legend-box"
+                style="background:#fdae61">
+            </span>
+            20–30%
+        </div>
+
+        <div class="legend-row">
+            <span
+                class="legend-box"
+                style="background:#d7191c">
+            </span>
+            30–50%
+        </div>
+
+        <div class="legend-row">
+            <span
+                class="legend-box"
+                style="background:#7b3294">
+            </span>
+            ≥ 50%
+        </div>
+    `;
+
+    return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+</html>
