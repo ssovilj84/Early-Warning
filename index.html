@@ -391,30 +391,44 @@
         height: 10px;
     }
 
-    .leaflet-bottom.leaflet-right {
-        bottom: 34px;
-        right: 3px;
-    }
+    /* MOBILE - legenda iznad donjeg natpisa */
 
-    /* eksperimentalni natpis */
+.leaflet-bottom.leaflet-right {
+    bottom: 34px;
+    right: 4px;
+}
 
-    .disclaimer {
-        width: auto;
-        max-width: calc(100% - 24px);
 
-        left: 12px;
-        right: 12px;
-        bottom: 5px;
+/* MOBILE - disclaimer na samom dnu */
 
-        transform: none;
+.disclaimer {
+    position: fixed;
 
-        padding: 4px 7px;
+    left: 0;
+    right: 0;
+    bottom: 0;
 
-        font-size: 9px;
-        line-height: 1.2;
+    width: 100%;
+    max-width: none;
 
-        border-radius: 4px;
-    }
+    transform: none;
+
+    padding: 5px 8px;
+
+    background: rgba(255, 255, 255, 0.96);
+
+    border-radius: 0;
+    border-top: 1px solid #ddd;
+
+    box-shadow: none;
+
+    font-size: 9px;
+    line-height: 1.2;
+
+    text-align: center;
+
+    z-index: 2000;
+}
 
     .share-panel {
         top: 210px;
