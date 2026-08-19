@@ -327,57 +327,100 @@
 
         @media (max-width: 800px) {
 
-            .header {
-                padding: 55px 18px 12px 18px;
-            }
+    .header {
+        padding: 55px 18px 12px 18px;
+    }
 
-            .header h1 {
-                font-size: 17px;
-            }
+    .header h1 {
+        font-size: 17px;
+    }
 
-            .language-switch {
-                left: 18px;
-                right: auto;
-                top: 10px;
-            }
+    .language-switch {
+        left: 18px;
+        right: auto;
+        top: 10px;
+    }
 
-            .toolbar {
-                padding: 8px 10px;
-            }
+    .toolbar {
+        padding: 8px 10px;
+    }
 
-            .search-wrapper {
-                flex: 1 1 100%;
-                max-width: none;
-            }
+    .search-wrapper {
+        flex: 1 1 100%;
+        max-width: none;
+    }
 
-            .action-button {
-                flex: 1 1 45%;
-            }
+    .action-button {
+        flex: 1 1 45%;
+    }
 
-            .controls {
-                padding: 8px 10px;
-            }
+    .controls {
+        padding: 8px 10px;
+    }
 
-            .layer-button {
-                flex: 1 1 45%;
-                font-size: 12px;
-            }
+    .layer-button {
+        flex: 1 1 45%;
+        font-size: 12px;
+    }
 
-            #map {
-                height: 70vh;
-                min-height: 480px;
-            }
+    #map {
+        height: 70vh;
+        min-height: 480px;
+    }
 
-            .disclaimer {
-                width: 90%;
-                max-width: 90%;
-            }
+    /* legenda */
 
-            .share-panel {
-                top: 210px;
-                right: 10px;
-            }
-        }
+    .legend {
+        padding: 6px 8px;
+        font-size: 11px;
+        line-height: 16px;
+        border-radius: 5px;
+    }
+
+    .legend-title {
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+
+    .legend-row {
+        gap: 5px;
+    }
+
+    .legend-box {
+        width: 13px;
+        height: 10px;
+    }
+
+    .leaflet-bottom.leaflet-right {
+        bottom: 34px;
+        right: 3px;
+    }
+
+    /* eksperimentalni natpis */
+
+    .disclaimer {
+        width: auto;
+        max-width: calc(100% - 24px);
+
+        left: 12px;
+        right: 12px;
+        bottom: 5px;
+
+        transform: none;
+
+        padding: 4px 7px;
+
+        font-size: 9px;
+        line-height: 1.2;
+
+        border-radius: 4px;
+    }
+
+    .share-panel {
+        top: 210px;
+        right: 10px;
+    }
+}
 
     </style>
 </head>
