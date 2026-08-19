@@ -9,10 +9,10 @@
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        crossorigin=""
     />
 
     <style>
+
         * {
             box-sizing: border-box;
         }
@@ -26,7 +26,7 @@
 
         .header {
             position: relative;
-            padding: 14px 130px 14px 18px;
+            padding: 14px 120px 12px 18px;
             background: white;
             border-bottom: 1px solid #d9dde2;
         }
@@ -34,12 +34,18 @@
         .header h1 {
             margin: 0 0 6px 0;
             font-size: 21px;
-            line-height: 1.25;
+            line-height: 1.3;
         }
 
         .subtitle {
             color: #666;
             font-size: 14px;
+        }
+
+        .update-info {
+            color: #777;
+            font-size: 12px;
+            margin-top: 4px;
         }
 
         .language-switch {
@@ -65,11 +71,90 @@
             border-color: #222;
         }
 
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 18px;
+            background: white;
+            border-bottom: 1px solid #d9dde2;
+            align-items: center;
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            flex: 1 1 320px;
+            max-width: 500px;
+        }
+
+        #municipality-search {
+            width: 100%;
+            border: 1px solid #aaa;
+            border-radius: 7px 0 0 7px;
+            padding: 9px 11px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        #municipality-search:focus {
+            border-color: #333;
+        }
+
+        #search-button {
+            border: 1px solid #888;
+            border-left: 0;
+            border-radius: 0 7px 7px 0;
+            background: #222;
+            color: white;
+            padding: 9px 14px;
+            cursor: pointer;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 42px;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 2000;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-result {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-result:hover {
+            background: #f2f2f2;
+        }
+
+        .action-button {
+            border: 1px solid #aaa;
+            background: white;
+            border-radius: 7px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .action-button:hover {
+            background: #f0f0f0;
+        }
+
         .controls {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            padding: 12px 18px;
+            padding: 10px 18px;
             background: white;
             border-bottom: 1px solid #d9dde2;
         }
@@ -94,7 +179,7 @@
         }
 
         #map {
-            height: calc(100vh - 188px);
+            height: calc(100vh - 235px);
             min-height: 520px;
             width: 100%;
         }
@@ -153,7 +238,7 @@
             left: 50%;
             bottom: 10px;
             transform: translateX(-50%);
-            background: rgba(255,255,255,0.92);
+            background: rgba(255,255,255,0.94);
             padding: 5px 10px;
             border-radius: 5px;
             font-size: 11px;
@@ -164,22 +249,113 @@
             pointer-events: none;
         }
 
+        .share-panel {
+            position: absolute;
+            z-index: 3000;
+            top: 115px;
+            right: 18px;
+            background: white;
+            border: 1px solid #bbb;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            min-width: 190px;
+        }
+
+        .share-panel button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 8px 9px;
+            margin-bottom: 4px;
+            border: 0;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .share-panel button:hover {
+            background: #f0f0f0;
+        }
+
+        .status-message {
+            position: absolute;
+            z-index: 3000;
+            top: 170px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30,30,30,0.92);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 6px;
+            display: none;
+            font-size: 13px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        @media print {
+
+            .toolbar,
+            .language-switch,
+            .controls,
+            .leaflet-control-zoom {
+                display: none !important;
+            }
+
+            .header {
+                padding: 10px;
+            }
+
+            #map {
+                height: 720px !important;
+            }
+
+            .disclaimer {
+                position: static;
+                transform: none;
+                max-width: 100%;
+                box-shadow: none;
+                margin-top: 5px;
+            }
+
+            body {
+                background: white;
+            }
+        }
+
         @media (max-width: 800px) {
 
             .header {
-                padding: 14px 18px 12px 18px;
+                padding: 55px 18px 12px 18px;
             }
 
             .header h1 {
                 font-size: 17px;
-                padding-right: 0;
-                margin-top: 40px;
             }
 
             .language-switch {
                 left: 18px;
                 right: auto;
                 top: 10px;
+            }
+
+            .toolbar {
+                padding: 8px 10px;
+            }
+
+            .search-wrapper {
+                flex: 1 1 100%;
+                max-width: none;
+            }
+
+            .action-button {
+                flex: 1 1 45%;
+            }
+
+            .controls {
+                padding: 8px 10px;
             }
 
             .layer-button {
@@ -193,10 +369,16 @@
             }
 
             .disclaimer {
-                max-width: 90%;
                 width: 90%;
+                max-width: 90%;
+            }
+
+            .share-panel {
+                top: 210px;
+                right: 10px;
             }
         }
+
     </style>
 </head>
 
@@ -205,16 +387,73 @@
 <div class="header">
 
     <div class="language-switch">
-        <button class="lang-button active" data-lang="sr">SR</button>
-        <button class="lang-button" data-lang="en">EN</button>
+
+        <button
+            class="lang-button active"
+            data-lang="sr">
+            SR
+        </button>
+
+        <button
+            class="lang-button"
+            data-lang="en">
+            EN
+        </button>
+
     </div>
 
     <h1 id="main-title"></h1>
 
-    <div
-        class="subtitle"
-        id="subtitle">
+    <div class="subtitle" id="subtitle"></div>
+
+    <div class="update-info" id="update-info"></div>
+
+</div>
+
+
+<div class="toolbar">
+
+    <div class="search-wrapper">
+
+        <input
+            type="text"
+            id="municipality-search"
+            autocomplete="off"
+        >
+
+        <button
+            type="button"
+            id="search-button">
+            🔎
+        </button>
+
+        <div
+            id="search-results"
+            class="search-results">
+        </div>
+
     </div>
+
+    <button
+        type="button"
+        class="action-button"
+        id="location-button">
+        📍
+    </button>
+
+    <button
+        type="button"
+        class="action-button"
+        id="pdf-button">
+        📄
+    </button>
+
+    <button
+        type="button"
+        class="action-button"
+        id="share-button">
+        ↗
+    </button>
 
 </div>
 
@@ -250,31 +489,80 @@
 
 <div id="map"></div>
 
+
 <div
     class="disclaimer"
     id="disclaimer">
 </div>
 
 
-<script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    crossorigin="">
-</script>
+<div
+    class="status-message"
+    id="status-message">
+</div>
+
+
+<div
+    class="share-panel"
+    id="share-panel">
+
+    <button type="button" id="share-native">
+        📱 Share
+    </button>
+
+    <button type="button" id="share-whatsapp">
+        WhatsApp
+    </button>
+
+    <button type="button" id="share-viber">
+        Viber
+    </button>
+
+    <button type="button" id="share-telegram">
+        Telegram
+    </button>
+
+    <button type="button" id="share-email">
+        Email
+    </button>
+
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
 
 <script>
 
 /* ============================================================
-   JEZIK
+   GLOBAL STATE
    ============================================================ */
 
 let currentLanguage = "sr";
 let currentLayer = "p_thunder";
 let geojsonLayer = null;
+let geojsonData = null;
+let locationMarker = null;
+let selectedLayer = null;
 
 
 /* ============================================================
-   PREVODI
+   DATA METADATA
+   ============================================================ */
+
+const MODEL_RUN_SR = "19.08.2026. 00 UTC";
+const MODEL_RUN_EN = "19 Aug 2026 00 UTC";
+
+const VALID_SR = "25.08.2026. 12 UTC";
+const VALID_EN = "25 Aug 2026 12 UTC";
+
+const FORECAST_HOUR = 156;
+
+
+/* ============================================================
+   TRANSLATIONS
    ============================================================ */
 
 const translations = {
@@ -285,7 +573,27 @@ const translations = {
             "Интерактивни приказ метеоролошких ризика по јединицама локалне самоуправе у Републици Србији",
 
         subtitle:
-            "Модел: GEFS ансамбл · Важи за: 25.08.2026. 12 UTC · Прогностички рок: +156 h",
+            "Модел: GEFS ансамбл · Важи за: " +
+            VALID_SR +
+            " · Прогностички рок: +" +
+            FORECAST_HOUR +
+            " h",
+
+        update:
+            "Последње ажурирање података: GEFS run " +
+            MODEL_RUN_SR,
+
+        searchPlaceholder:
+            "Претражи општину...",
+
+        myLocation:
+            "📍 Моја локација",
+
+        savePdf:
+            "📄 Сачувај као PDF",
+
+        share:
+            "↗ Подели",
 
         thunder:
             "⚡ Грмљавина",
@@ -324,8 +632,34 @@ const translations = {
             "Просторни buffer",
 
         disclaimer:
-            "Експериментални развојни производ — није званично метеоролошко упозорење."
+            "Експериментални развојни производ — није званично метеоролошко упозорење.",
 
+        notFound:
+            "Општина није пронађена.",
+
+        locationSearching:
+            "Одређујем вашу локацију...",
+
+        locationDenied:
+            "Приступ локацији није дозвољен. Омогућите Location за овај сајт у подешавањима прегледача.",
+
+        locationUnavailable:
+            "Тренутну локацију није могуће одредити. Проверите да ли су Location services укључени на уређају.",
+
+        locationTimeout:
+            "Одређивање локације је предуго трајало. Покушајте поново.",
+
+        locationOutside:
+            "Локација није пронађена у приказаним јединицама локалне самоуправе.",
+
+        municipalityLocated:
+            "Пронађена општина",
+
+        shareTitle:
+            "Интерактивни приказ метеоролошких ризика",
+
+        shareText:
+            "Интерактивни приказ метеоролошких ризика у Републици Србији — GEFS ансамбл."
     },
 
 
@@ -335,7 +669,27 @@ const translations = {
             "Interactive Weather Risk Map by Local Government Units in the Republic of Serbia",
 
         subtitle:
-            "Model: GEFS ensemble · Valid: 25 Aug 2026 12 UTC · Lead time: +156 h",
+            "Model: GEFS ensemble · Valid: " +
+            VALID_EN +
+            " · Lead time: +" +
+            FORECAST_HOUR +
+            " h",
+
+        update:
+            "Last data update: GEFS run " +
+            MODEL_RUN_EN,
+
+        searchPlaceholder:
+            "Search municipality...",
+
+        myLocation:
+            "📍 My location",
+
+        savePdf:
+            "📄 Save as PDF",
+
+        share:
+            "↗ Share",
 
         thunder:
             "⚡ Thunderstorm",
@@ -374,13 +728,41 @@ const translations = {
             "Spatial buffer",
 
         disclaimer:
-            "Experimental development product — not an official meteorological warning."
+            "Experimental development product — not an official meteorological warning.",
+
+        notFound:
+            "Municipality not found.",
+
+        locationSearching:
+            "Determining your location...",
+
+        locationDenied:
+            "Location access was denied. Allow Location for this site in your browser settings.",
+
+        locationUnavailable:
+            "Your current location could not be determined. Check that Location services are enabled on the device.",
+
+        locationTimeout:
+            "Location request timed out. Please try again.",
+
+        locationOutside:
+            "Location was not found within the displayed local government units.",
+
+        municipalityLocated:
+            "Municipality found",
+
+        shareTitle:
+            "Interactive Weather Risk Map",
+
+        shareText:
+            "Interactive Weather Risk Map for the Republic of Serbia — GEFS ensemble."
     }
+
 };
 
 
 /* ============================================================
-   MAPA
+   MAP
    ============================================================ */
 
 const map = L.map(
@@ -405,7 +787,7 @@ L.tileLayer(
 
 
 /* ============================================================
-   BOJE
+   COLORS
    ============================================================ */
 
 function getProbabilityColor(value) {
@@ -439,14 +821,15 @@ function getProbabilityColor(value) {
 
 
 /* ============================================================
-   STIL POLIGONA
+   STYLE
    ============================================================ */
 
 function styleFeature(feature) {
 
-    const value = Number(
-        feature.properties[currentLayer] ?? 0
-    );
+    const value =
+        Number(
+            feature.properties[currentLayer] ?? 0
+        );
 
     return {
         fillColor:
@@ -464,12 +847,13 @@ function styleFeature(feature) {
 
 
 /* ============================================================
-   FORMATIRANJE
+   FORMAT
    ============================================================ */
 
 function formatProbability(value) {
 
-    const number = Number(value);
+    const number =
+        Number(value);
 
     if (!Number.isFinite(number)) {
         return "–";
@@ -479,9 +863,13 @@ function formatProbability(value) {
 }
 
 
-function formatNumber(value, decimals) {
+function formatNumber(
+    value,
+    decimals
+) {
 
-    const number = Number(value);
+    const number =
+        Number(value);
 
     if (!Number.isFinite(number)) {
         return "–";
@@ -492,7 +880,7 @@ function formatNumber(value, decimals) {
 
 
 /* ============================================================
-   NAZIV OPŠTINE
+   MUNICIPALITY NAME
    ============================================================ */
 
 function municipalityName(properties) {
@@ -535,91 +923,112 @@ function popupContent(properties) {
         </div>
 
         <div class="popup-valid">
-            ${t.valid}: 25.08.2026. 12 UTC
+            ${t.valid}:
+            ${
+                currentLanguage === "sr"
+                ? VALID_SR
+                : VALID_EN
+            }
         </div>
 
-
         <div class="popup-row">
-            ⚡ ${currentLanguage === "sr"
+            ⚡ ${
+                currentLanguage === "sr"
                 ? "Грмљавина"
-                : "Thunderstorm"}:
-            <b>${formatProbability(
-                properties.p_thunder
-            )}</b>
+                : "Thunderstorm"
+            }:
+            <b>
+                ${formatProbability(
+                    properties.p_thunder
+                )}
+            </b>
         </div>
 
-
         <div class="popup-row">
-            🧊 ${currentLanguage === "sr"
+            🧊 ${
+                currentLanguage === "sr"
                 ? "Ризик од града"
-                : "Hail risk"}:
-            <b>${formatProbability(
-                properties.p_hail_env
-            )}</b>
+                : "Hail risk"
+            }:
+            <b>
+                ${formatProbability(
+                    properties.p_hail_env
+                )}
+            </b>
         </div>
 
-
         <div class="popup-row">
-            🧊 ${currentLanguage === "sr"
+            🧊 ${
+                currentLanguage === "sr"
                 ? "Крупан град (≥ 2 cm)"
-                : "Large hail (≥ 2 cm)"}:
-            <b>${formatProbability(
-                properties.p_large_hail
-            )}</b>
+                : "Large hail (≥ 2 cm)"
+            }:
+            <b>
+                ${formatProbability(
+                    properties.p_large_hail
+                )}
+            </b>
         </div>
-
 
         <div class="popup-row">
-            🧊 ${currentLanguage === "sr"
+            🧊 ${
+                currentLanguage === "sr"
                 ? "Веома крупан град (≥ 5 cm)"
-                : "Very large hail (≥ 5 cm)"}:
-            <b>${formatProbability(
-                properties.p_severe_hail
-            )}</b>
+                : "Very large hail (≥ 5 cm)"
+            }:
+            <b>
+                ${formatProbability(
+                    properties.p_severe_hail
+                )}
+            </b>
         </div>
-
 
         <div class="popup-section">
             ${t.modelParameters}
         </div>
 
-
         <div class="popup-row">
             ${t.instability}:
-            <b>${formatNumber(
-                properties.cape_med_max,
-                0
-            )} J/kg</b>
+            <b>
+                ${formatNumber(
+                    properties.cape_med_max,
+                    0
+                )} J/kg
+            </b>
         </div>
-
 
         <div class="popup-row">
             ${t.shear}:
-            <b>${formatNumber(
-                properties.shear_med_max,
-                1
-            )} m/s</b>
+            <b>
+                ${formatNumber(
+                    properties.shear_med_max,
+                    1
+                )} m/s
+            </b>
         </div>
-
 
         <div class="popup-row">
             ${t.humidity}:
-            <b>${formatNumber(
-                properties.rh700_med_max,
-                0
-            )}%</b>
+            <b>
+                ${formatNumber(
+                    properties.rh700_med_max,
+                    0
+                )}%
+            </b>
         </div>
-
 
         <div class="popup-row">
             ${t.gridPoints}:
-            <b>${properties.grid_points ?? "–"}</b>
+            <b>
+                ${properties.grid_points ?? "–"}
+            </b>
         </div>
-
 
         <div class="popup-row">
             ${t.buffer}:
-            <b>${properties.buffer_km ?? 25} km</b>
+            <b>
+                ${properties.buffer_km ?? 25} km
+            </b>
         </div>
 
     `;
@@ -627,7 +1036,7 @@ function popupContent(properties) {
 
 
 /* ============================================================
-   HOVER
+   HIGHLIGHT
    ============================================================ */
 
 function highlightFeature(event) {
@@ -648,7 +1057,6 @@ function highlightFeature(event) {
 function resetHighlight(event) {
 
     if (geojsonLayer) {
-
         geojsonLayer.resetStyle(
             event.target
         );
@@ -657,10 +1065,13 @@ function resetHighlight(event) {
 
 
 /* ============================================================
-   FEATURE
+   FEATURES
    ============================================================ */
 
-function onEachFeature(feature, layer) {
+function onEachFeature(
+    feature,
+    layer
+) {
 
     layer.bindPopup(
         popupContent(
@@ -682,6 +1093,9 @@ function onEachFeature(feature, layer) {
         click:
             function() {
 
+                selectedLayer =
+                    this;
+
                 this.setPopupContent(
                     popupContent(
                         feature.properties
@@ -693,7 +1107,7 @@ function onEachFeature(feature, layer) {
 
 
 /* ============================================================
-   GEOJSON
+   GEOJSON LOAD
    ============================================================ */
 
 fetch(
@@ -714,6 +1128,9 @@ fetch(
 
 .then(data => {
 
+    geojsonData =
+        data;
+
     geojsonLayer =
         L.geoJSON(
             data,
@@ -726,18 +1143,20 @@ fetch(
             }
         ).addTo(map);
 
-
     map.fitBounds(
         geojsonLayer.getBounds(),
         {
-            padding: [15, 15]
+            padding:
+                [15, 15]
         }
     );
 })
 
 .catch(error => {
 
-    console.error(error);
+    console.error(
+        error
+    );
 
     alert(
         "Greška pri učitavanju GeoJSON fajla."
@@ -746,57 +1165,831 @@ fetch(
 
 
 /* ============================================================
-   PROMENA HAZARDA
+   SEARCH NORMALIZATION
+   ============================================================ */
+
+function transliterateCyrillic(text) {
+
+    const mapChars = {
+
+        "а":"a","б":"b","в":"v",
+        "г":"g","д":"d","ђ":"dj",
+        "е":"e","ж":"z","з":"z",
+        "и":"i","ј":"j","к":"k",
+        "л":"l","љ":"lj","м":"m",
+        "н":"n","њ":"nj","о":"o",
+        "п":"p","р":"r","с":"s",
+        "т":"t","ћ":"c","у":"u",
+        "ф":"f","х":"h","ц":"c",
+        "ч":"c","џ":"dz","ш":"s"
+    };
+
+    return text
+        .toLowerCase()
+        .split("")
+        .map(
+            c => mapChars[c] ?? c
+        )
+        .join("");
+}
+
+
+function normalizeSearch(text) {
+
+    if (!text) {
+        return "";
+    }
+
+    let value =
+        transliterateCyrillic(text);
+
+    value =
+        value
+        .normalize("NFD")
+        .replace(
+            /[\u0300-\u036f]/g,
+            ""
+        );
+
+    value =
+        value
+        .replace(/đ/g, "dj")
+        .replace(/č|ć/g, "c")
+        .replace(/š/g, "s")
+        .replace(/ž/g, "z");
+
+    value =
+        value
+        .replace(/-grad/g, "")
+        .replace(/beograd-/g, "");
+
+    value =
+        value
+        .replace(/\s+/g, " ")
+        .trim();
+
+    return value;
+}
+
+
+/* ============================================================
+   SEARCH MATCHING
+   ============================================================ */
+
+function searchableNames(feature) {
+
+    const p =
+        feature.properties;
+
+    return [
+        p.Value_sc,
+        p.Value_sl,
+        p.Value_e
+    ]
+    .filter(Boolean)
+    .map(normalizeSearch);
+}
+
+
+function findMunicipalities(query) {
+
+    if (!geojsonData) {
+        return [];
+    }
+
+    const q =
+        normalizeSearch(query);
+
+    if (!q) {
+        return [];
+    }
+
+    const exact = [];
+    const starts = [];
+    const contains = [];
+
+    geojsonData.features.forEach(
+        feature => {
+
+            const names =
+                searchableNames(feature);
+
+            if (
+                names.some(
+                    n => n === q
+                )
+            ) {
+
+                exact.push(
+                    feature
+                );
+
+            } else if (
+
+                names.some(
+                    n => n.startsWith(q)
+                )
+
+            ) {
+
+                starts.push(
+                    feature
+                );
+
+            } else if (
+
+                names.some(
+                    n => n.includes(q)
+                )
+
+            ) {
+
+                contains.push(
+                    feature
+                );
+            }
+        }
+    );
+
+    return [
+        ...exact,
+        ...starts,
+        ...contains
+    ];
+}
+
+
+/* ============================================================
+   OPEN MUNICIPALITY
+   ============================================================ */
+
+function openFeature(feature) {
+
+    if (!geojsonLayer) {
+        return;
+    }
+
+    geojsonLayer.eachLayer(
+        layer => {
+
+            if (
+                layer.feature ===
+                feature
+            ) {
+
+                selectedLayer =
+                    layer;
+
+                map.fitBounds(
+                    layer.getBounds(),
+                    {
+                        padding:
+                            [40,40],
+
+                        maxZoom:
+                            11
+                    }
+                );
+
+                layer.setPopupContent(
+                    popupContent(
+                        feature.properties
+                    )
+                );
+
+                layer.openPopup();
+            }
+        }
+    );
+}
+
+
+/* ============================================================
+   SEARCH UI
+   ============================================================ */
+
+const searchInput =
+    document.getElementById(
+        "municipality-search"
+    );
+
+const searchResults =
+    document.getElementById(
+        "search-results"
+    );
+
+
+function showSearchResults() {
+
+    const query =
+        searchInput.value;
+
+    const matches =
+        findMunicipalities(query)
+        .slice(0,10);
+
+    searchResults.innerHTML =
+        "";
+
+    if (
+        !query.trim() ||
+        matches.length === 0
+    ) {
+
+        searchResults.style.display =
+            "none";
+
+        return;
+    }
+
+    matches.forEach(
+        feature => {
+
+            const item =
+                document.createElement(
+                    "div"
+                );
+
+            item.className =
+                "search-result";
+
+            item.textContent =
+                municipalityName(
+                    feature.properties
+                );
+
+            item.addEventListener(
+                "click",
+                () => {
+
+                    searchInput.value =
+                        municipalityName(
+                            feature.properties
+                        );
+
+                    searchResults.style.display =
+                        "none";
+
+                    openFeature(
+                        feature
+                    );
+                }
+            );
+
+            searchResults.appendChild(
+                item
+            );
+        }
+    );
+
+    searchResults.style.display =
+        "block";
+}
+
+
+searchInput.addEventListener(
+    "input",
+    showSearchResults
+);
+
+
+searchInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+            performSearch();
+        }
+    }
+);
+
+
+document
+.getElementById(
+    "search-button"
+)
+.addEventListener(
+    "click",
+    performSearch
+);
+
+
+function performSearch() {
+
+    const matches =
+        findMunicipalities(
+            searchInput.value
+        );
+
+    if (matches.length) {
+
+        searchResults.style.display =
+            "none";
+
+        searchInput.value =
+            municipalityName(
+                matches[0].properties
+            );
+
+        openFeature(
+            matches[0]
+        );
+
+    } else {
+
+        showStatus(
+            translations[
+                currentLanguage
+            ].notFound
+        );
+    }
+}
+
+
+/* ============================================================
+   MY LOCATION
+   ============================================================ */
+
+document
+.getElementById(
+    "location-button"
+)
+.addEventListener(
+    "click",
+    locateUser
+);
+
+
+function locateUser() {
+
+    const t =
+        translations[currentLanguage];
+
+    if (!navigator.geolocation) {
+
+        showStatus(
+            currentLanguage === "sr"
+            ? "Овај прегледач не подржава геолокацију."
+            : "This browser does not support geolocation."
+        );
+
+        return;
+    }
+
+    showStatus(
+        t.locationSearching,
+        3000
+    );
+
+    navigator.geolocation
+    .getCurrentPosition(
+
+        position => {
+
+            const lat =
+                position.coords.latitude;
+
+            const lon =
+                position.coords.longitude;
+
+            if (locationMarker) {
+
+                map.removeLayer(
+                    locationMarker
+                );
+            }
+
+            locationMarker =
+                L.marker(
+                    [lat, lon]
+                )
+                .addTo(map);
+
+            map.setView(
+                [lat, lon],
+                11
+            );
+
+            if (!geojsonData) {
+                return;
+            }
+
+            const point =
+                turf.point(
+                    [lon, lat]
+                );
+
+            let found =
+                null;
+
+            for (
+                const feature
+                of geojsonData.features
+            ) {
+
+                try {
+
+                    if (
+                        turf.booleanPointInPolygon(
+                            point,
+                            feature
+                        )
+                    ) {
+
+                        found =
+                            feature;
+
+                        break;
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        error
+                    );
+                }
+            }
+
+            if (found) {
+
+                openFeature(
+                    found
+                );
+
+                searchInput.value =
+                    municipalityName(
+                        found.properties
+                    );
+
+                showStatus(
+                    t.municipalityLocated
+                    + ": "
+                    + municipalityName(
+                        found.properties
+                    )
+                );
+
+            } else {
+
+                showStatus(
+                    t.locationOutside
+                );
+            }
+        },
+
+
+        error => {
+
+            console.error(
+                "Geolocation error:",
+                error.code,
+                error.message
+            );
+
+            let message;
+
+            if (
+                error.code ===
+                error.PERMISSION_DENIED
+            ) {
+
+                message =
+                    t.locationDenied;
+
+            } else if (
+                error.code ===
+                error.POSITION_UNAVAILABLE
+            ) {
+
+                message =
+                    t.locationUnavailable;
+
+            } else if (
+                error.code ===
+                error.TIMEOUT
+            ) {
+
+                message =
+                    t.locationTimeout;
+
+            } else {
+
+                message =
+                    currentLanguage === "sr"
+                    ? "Локација тренутно није доступна."
+                    : "Location is currently unavailable.";
+            }
+
+            showStatus(
+                message,
+                7000
+            );
+        },
+
+
+        {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000
+        }
+
+    );
+}
+
+
+/* ============================================================
+   PDF
+   ============================================================ */
+
+document
+.getElementById(
+    "pdf-button"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        window.print();
+    }
+);
+
+
+/* ============================================================
+   SHARE
+   ============================================================ */
+
+const sharePanel =
+    document.getElementById(
+        "share-panel"
+    );
+
+
+document
+.getElementById(
+    "share-button"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        if (navigator.share) {
+
+            nativeShare();
+
+        } else {
+
+            sharePanel.style.display =
+                sharePanel.style.display
+                === "block"
+                ? "none"
+                : "block";
+        }
+    }
+);
+
+
+function shareData() {
+
+    const t =
+        translations[currentLanguage];
+
+    let text =
+        t.shareText;
+
+    if (
+        selectedLayer &&
+        selectedLayer.feature
+    ) {
+
+        const p =
+            selectedLayer
+            .feature
+            .properties;
+
+        text +=
+            "\n"
+            + municipalityName(p)
+            + " — "
+            + formatProbability(
+                p[currentLayer]
+            );
+    }
+
+    return {
+
+        title:
+            t.shareTitle,
+
+        text:
+            text,
+
+        url:
+            window.location.href
+    };
+}
+
+
+async function nativeShare() {
+
+    try {
+
+        await navigator.share(
+            shareData()
+        );
+
+    } catch (error) {
+
+        if (
+            error.name !==
+            "AbortError"
+        ) {
+
+            console.error(error);
+
+            sharePanel.style.display =
+                "block";
+        }
+    }
+}
+
+
+function encodedShareText() {
+
+    const data =
+        shareData();
+
+    return encodeURIComponent(
+        data.text
+        + "\n"
+        + data.url
+    );
+}
+
+
+document
+.getElementById(
+    "share-native"
+)
+.addEventListener(
+    "click",
+    nativeShare
+);
+
+
+document
+.getElementById(
+    "share-whatsapp"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        window.open(
+            "https://wa.me/?text="
+            + encodedShareText(),
+            "_blank"
+        );
+    }
+);
+
+
+document
+.getElementById(
+    "share-viber"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        window.location.href =
+            "viber://forward?text="
+            + encodedShareText();
+    }
+);
+
+
+document
+.getElementById(
+    "share-telegram"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        window.open(
+            "https://t.me/share/url?url="
+            + encodeURIComponent(
+                window.location.href
+            )
+            + "&text="
+            + encodeURIComponent(
+                shareData().text
+            ),
+            "_blank"
+        );
+    }
+);
+
+
+document
+.getElementById(
+    "share-email"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        const data =
+            shareData();
+
+        window.location.href =
+            "mailto:?subject="
+            + encodeURIComponent(
+                data.title
+            )
+            + "&body="
+            + encodeURIComponent(
+                data.text
+                + "\n\n"
+                + data.url
+            );
+    }
+);
+
+
+/* ============================================================
+   HAZARD CHANGE
    ============================================================ */
 
 document
 .querySelectorAll(
     ".layer-button"
 )
-.forEach(button => {
+.forEach(
+    button => {
 
-    button.addEventListener(
-        "click",
-        function() {
+        button.addEventListener(
+            "click",
+            function() {
 
-            currentLayer =
-                this.dataset.layer;
+                currentLayer =
+                    this.dataset.layer;
 
-            document
-            .querySelectorAll(
-                ".layer-button"
-            )
-            .forEach(btn =>
-
-                btn.classList.remove(
-                    "active"
+                document
+                .querySelectorAll(
+                    ".layer-button"
                 )
-            );
-
-            this.classList.add(
-                "active"
-            );
-
-
-            if (geojsonLayer) {
-
-                geojsonLayer.setStyle(
-                    styleFeature
+                .forEach(
+                    btn =>
+                        btn
+                        .classList
+                        .remove(
+                            "active"
+                        )
                 );
+
+                this.classList.add(
+                    "active"
+                );
+
+                if (geojsonLayer) {
+
+                    geojsonLayer.setStyle(
+                        styleFeature
+                    );
+                }
+
+                if (
+                    selectedLayer &&
+                    selectedLayer.feature
+                ) {
+
+                    selectedLayer
+                    .setPopupContent(
+                        popupContent(
+                            selectedLayer
+                            .feature
+                            .properties
+                        )
+                    );
+                }
             }
-        }
-    );
-});
+        );
+    }
+);
 
 
 /* ============================================================
-   LEGENDA
+   LEGEND
    ============================================================ */
 
 const legend =
-    L.control({
-        position: "bottomright"
-    });
+    L.control(
+        {
+            position:
+                "bottomright"
+        }
+    );
 
 
 legend.onAdd =
@@ -811,17 +2004,22 @@ function() {
     div.id =
         "map-legend";
 
-    updateLegend(div);
+    updateLegend(
+        div
+    );
 
     return div;
 };
 
 
-function updateLegend(div = null) {
+function updateLegend(
+    div = null
+) {
 
     const element =
         div ||
-        document.getElementById(
+        document
+        .getElementById(
             "map-legend"
         );
 
@@ -830,7 +2028,9 @@ function updateLegend(div = null) {
     }
 
     const t =
-        translations[currentLanguage];
+        translations[
+            currentLanguage
+        ];
 
     element.innerHTML = `
 
@@ -877,85 +2077,119 @@ function updateLegend(div = null) {
             </span>
             ≥ 50%
         </div>
+
     `;
 }
 
 
-legend.addTo(map);
+legend.addTo(
+    map
+);
 
 
 /* ============================================================
-   PROMENA JEZIKA
+   LANGUAGE UPDATE
    ============================================================ */
 
 function updateLanguage() {
 
     const t =
-        translations[currentLanguage];
-
+        translations[
+            currentLanguage
+        ];
 
     document.documentElement.lang =
         currentLanguage;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "main-title"
-    ).textContent =
+    )
+    .textContent =
         t.title;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "subtitle"
-    ).textContent =
+    )
+    .textContent =
         t.subtitle;
 
+    document
+    .getElementById(
+        "update-info"
+    )
+    .textContent =
+        t.update;
 
-    document.getElementById(
+    searchInput.placeholder =
+        t.searchPlaceholder;
+
+    document
+    .getElementById(
+        "location-button"
+    )
+    .textContent =
+        t.myLocation;
+
+    document
+    .getElementById(
+        "pdf-button"
+    )
+    .textContent =
+        t.savePdf;
+
+    document
+    .getElementById(
+        "share-button"
+    )
+    .textContent =
+        t.share;
+
+    document
+    .getElementById(
         "btn-thunder"
-    ).textContent =
+    )
+    .textContent =
         t.thunder;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "btn-hail"
-    ).textContent =
+    )
+    .textContent =
         t.hail;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "btn-large-hail"
-    ).textContent =
+    )
+    .textContent =
         t.largeHail;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "btn-very-large-hail"
-    ).textContent =
+    )
+    .textContent =
         t.veryLargeHail;
 
-
-    document.getElementById(
+    document
+    .getElementById(
         "disclaimer"
-    ).textContent =
+    )
+    .textContent =
         t.disclaimer;
-
 
     document.title =
         t.title;
 
-
     updateLegend();
-
-
-    /*
-       Osvežavanje popup sadržaja
-       nakon promene jezika
-    */
 
     if (geojsonLayer) {
 
         geojsonLayer.eachLayer(
-            function(layer) {
+            layer => {
 
                 if (
                     layer.feature &&
@@ -964,59 +2198,109 @@ function updateLanguage() {
 
                     layer.setPopupContent(
                         popupContent(
-                            layer.feature.properties
+                            layer
+                            .feature
+                            .properties
                         )
                     );
                 }
             }
         );
     }
+
+    if (searchInput.value) {
+
+        showSearchResults();
+    }
 }
 
 
 /* ============================================================
-   SR / EN DUGMAD
+   LANGUAGE BUTTONS
    ============================================================ */
 
 document
 .querySelectorAll(
     ".lang-button"
 )
-.forEach(button => {
+.forEach(
+    button => {
 
-    button.addEventListener(
-        "click",
-        function() {
+        button.addEventListener(
+            "click",
+            function() {
 
-            currentLanguage =
-                this.dataset.lang;
+                currentLanguage =
+                    this.dataset.lang;
 
-
-            document
-            .querySelectorAll(
-                ".lang-button"
-            )
-            .forEach(btn =>
-
-                btn.classList.remove(
-                    "active"
+                document
+                .querySelectorAll(
+                    ".lang-button"
                 )
-            );
+                .forEach(
+                    btn =>
+                        btn
+                        .classList
+                        .remove(
+                            "active"
+                        )
+                );
 
+                this.classList.add(
+                    "active"
+                );
 
-            this.classList.add(
-                "active"
-            );
-
-
-            updateLanguage();
-        }
-    );
-});
+                updateLanguage();
+            }
+        );
+    }
+);
 
 
 /* ============================================================
-   POČETNI JEZIK
+   STATUS MESSAGE
+   ============================================================ */
+
+let statusTimeoutId = null;
+
+function showStatus(
+    message,
+    duration = 4000
+) {
+
+    const element =
+        document.getElementById(
+            "status-message"
+        );
+
+    if (statusTimeoutId) {
+
+        clearTimeout(
+            statusTimeoutId
+        );
+    }
+
+    element.textContent =
+        message;
+
+    element.style.display =
+        "block";
+
+    statusTimeoutId =
+        setTimeout(
+            () => {
+
+                element.style.display =
+                    "none";
+
+            },
+            duration
+        );
+}
+
+
+/* ============================================================
+   INITIAL LANGUAGE
    ============================================================ */
 
 updateLanguage();
