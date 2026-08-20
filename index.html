@@ -308,7 +308,21 @@
         /* =====================================================
            POPUP
            ===================================================== */
+	.leaflet-popup-content-wrapper {
+    max-height: 75vh;
+    overflow: hidden;
+}
 
+.leaflet-popup-content {
+    width: 420px !important;
+    max-width: 420px;
+    max-height: 68vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 14px 12px 14px 16px;
+    scrollbar-width: thin;
+}
+	
         .popup-title {
             font-size: 17px;
             font-weight: bold;
@@ -594,6 +608,26 @@
                 text-align: center;
 
                 z-index: 2000;
+
+		.leaflet-popup-content-wrapper {
+    max-height: 72vh;
+}
+
+.leaflet-popup-content {
+    width: auto !important;
+    max-width: calc(100vw - 70px);
+
+    max-height: 64vh;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    margin: 12px 10px 12px 12px;
+
+    font-size: 12px;
+
+    scrollbar-width: thin;
+}
             }
         }
 
