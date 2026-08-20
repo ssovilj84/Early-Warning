@@ -198,8 +198,25 @@
             border-color: #222;
         }
 
-        .hazard-group-wrap {
+        .hazard-group-tabs {
             width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls {
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .controls > .hazard-subcontrols {
+            width: 100%;
+            justify-content: center;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .hazard-group-button {
@@ -777,6 +794,11 @@
                 border-radius: 0; border-top: 1px solid #ddd; box-shadow: none; font-size: 9px;
                 line-height: 1.2; text-align: center; z-index: 2000;
             }
+            .hazard-group-tabs {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 7px;
+            }
             .hazard-group-button { width: 100%; justify-content: space-between; }
             .hazard-subcontrols .layer-button { flex: 1 1 45%; }
 
@@ -928,44 +950,58 @@
 
 <div class="controls">
 
-    <div class="hazard-group-wrap">
-
+    <div class="hazard-group-tabs">
         <button
             class="hazard-group-button"
             id="storm-group-button"
             type="button">
-            <span id="storm-group-label">⛈ Ризик од олује</span>
+            <span id="storm-group-label">⛈ ОЛУЈА</span>
             <span class="arrow">▼</span>
         </button>
 
-        <div class="hazard-subcontrols" id="storm-subcontrols">
+        <button
+            class="hazard-group-button"
+            id="wind-group-button"
+            type="button">
+            <span id="wind-group-label">💨 ВЕТАР</span>
+            <span class="arrow">▼</span>
+        </button>
+    </div>
 
-            <button
-                class="layer-button active"
-                data-layer="thunder"
-                id="btn-thunder">
-            </button>
+    <div class="hazard-subcontrols" id="storm-subcontrols">
 
-            <button
-                class="layer-button"
-                data-layer="hail"
-                id="btn-hail">
-            </button>
+        <button
+            class="layer-button"
+            data-layer="thunder"
+            id="btn-thunder">
+        </button>
 
-            <button
-                class="layer-button"
-                data-layer="large_hail"
-                id="btn-large-hail">
-            </button>
+        <button
+            class="layer-button"
+            data-layer="hail"
+            id="btn-hail">
+        </button>
 
-            <button
-                class="layer-button"
-                data-layer="very_large_hail"
-                id="btn-very-large-hail">
-            </button>
+        <button
+            class="layer-button"
+            data-layer="large_hail"
+            id="btn-large-hail">
+        </button>
 
-        </div>
+        <button
+            class="layer-button"
+            data-layer="very_large_hail"
+            id="btn-very-large-hail">
+        </button>
 
+    </div>
+
+    <div class="hazard-subcontrols" id="wind-subcontrols">
+        <button class="layer-button" data-layer="wind_risk_level" id="btn-wind-risk"></button>
+        <button class="layer-button" data-layer="wind_10" id="btn-wind-10"></button>
+        <button class="layer-button" data-layer="wind_17" id="btn-wind-17"></button>
+        <button class="layer-button" data-layer="wind_24" id="btn-wind-24"></button>
+        <button class="layer-button" data-layer="wind_28" id="btn-wind-28"></button>
     </div>
 
 </div>
@@ -1118,7 +1154,7 @@ const GEFS_DIR =
    ============================================================ */
 
 let currentLanguage = "sr";
-let currentHazard = "thunder";
+let currentHazard = "overall_risk";
 
 let currentTimeIndex = 0;
 
@@ -1242,7 +1278,14 @@ const translations = {
             "Интерактивни приказ метеоролошких ризика",
 
         stormGroup:
-            "⛈ Ризик од олује",
+            "⛈ ОЛУЈА",
+
+        windGroup: "💨 ВЕТАР",
+        windOverall: "Укупни ризик",
+        wind10: "Удар ≥ 10 m/s (36 km/h)",
+        wind17: "Олујни удар ≥ 17 m/s (61 km/h)",
+        wind24: "Жестоки олујни удар ≥ 24 m/s (86 km/h)",
+        wind28: "Оркански удар ≥ 28 m/s (101 km/h)",
 
         overviewTitle:
             "Преглед ризика за наредних 5 дана",
@@ -1360,7 +1403,14 @@ const translations = {
             "Interactive Weather Risk Map",
 
         stormGroup:
-            "⛈ Storm risk",
+            "⛈ STORM",
+
+        windGroup: "💨 WIND",
+        windOverall: "Overall risk",
+        wind10: "Gust ≥ 10 m/s (36 km/h)",
+        wind17: "Gale gust ≥ 17 m/s (61 km/h)",
+        wind24: "Severe gale gust ≥ 24 m/s (86 km/h)",
+        wind28: "Hurricane-force gust ≥ 28 m/s (101 km/h)",
 
         overviewTitle:
             "Risk overview for the next 5 days",
@@ -1532,135 +1582,229 @@ function formatNumber(
    HAZARD INFO
    ============================================================ */
 
-function currentHazardInfo() {
+function hazardInfoFor(hazardKey) {
 
     if (!hazardInfo) {
         return null;
     }
 
-    const hazard =
-        hazardInfo[
-            currentHazard
-        ];
+    const hazard = hazardInfo[hazardKey];
 
     if (!hazard) {
         return null;
     }
 
-    return (
-        hazard[
-            currentLanguage
-        ]
-        || null
-    );
+    return hazard[currentLanguage] || null;
 }
 
 
-function hazardInfoHtml(
+function currentHazardInfo() {
+    return hazardInfoFor(currentHazard);
+}
+
+
+function hazardInfoHtmlForHazard(
+    hazardKey,
     data
 ) {
 
-    const info =
-        currentHazardInfo();
+    const info = hazardInfoFor(hazardKey);
+    const t = translations[currentLanguage];
 
-    const t =
-        translations[
-            currentLanguage
-        ];
-
-    if (
-        !info ||
-        !data
-    ) {
+    if (!info || !data) {
         return "";
     }
 
+    const probability = Number(data[hazardKey]);
 
-    const probability =
-        Number(
-            data[
-                currentHazard
-            ]
-        );
-
-
-    /*
-       ZELENI SIGNAL:
-       ispod 10% ne prikazujemo
-       uticaje i preporuke.
-    */
-
-    if (
-        !Number.isFinite(
-            probability
-        )
-        ||
-        probability < 10
-    ) {
-
+    /* Storm hazards are significant from 10% upward. */
+    if (!Number.isFinite(probability) || probability < 10) {
         return "";
     }
 
+    const impacts = Array.isArray(info.impacts) ? info.impacts : [];
+    const recommendations = Array.isArray(info.recommendations) ? info.recommendations : [];
 
-    const impacts =
-        Array.isArray(
-            info.impacts
-        )
-        ? info.impacts
-        : [];
-
-
-    const recommendations =
-        Array.isArray(
-            info.recommendations
-        )
-        ? info.recommendations
-        : [];
-
+    if (!impacts.length && !recommendations.length) {
+        return "";
+    }
 
     return `
-
         <div class="popup-risk-box">
+            ${impacts.length ? `
+                <div class="popup-section">${info.impact_title}</div>
+                <ul>${impacts.map(item => `<li>${item}</li>`).join("")}</ul>
+            ` : ""}
 
-            <div class="popup-section">
-                ${info.impact_title}
-            </div>
+            ${recommendations.length ? `
+                <div class="popup-section">${info.recommendation_title}</div>
+                <ul>${recommendations.map(item => `<li>${item}</li>`).join("")}</ul>
+            ` : ""}
 
-            <ul>
-                ${
-                    impacts
-                    .map(
-                        item =>
-                            `<li>${item}</li>`
-                    )
-                    .join("")
-                }
-            </ul>
-
-
-            <div class="popup-section">
-                ${info.recommendation_title}
-            </div>
-
-            <ul>
-                ${
-                    recommendations
-                    .map(
-                        item =>
-                            `<li>${item}</li>`
-                    )
-                    .join("")
-                }
-            </ul>
-
-
-            <div class="popup-note">
-                ${t.riskNote}
-            </div>
-
+            <div class="popup-note">${t.riskNote}</div>
         </div>
     `;
 }
+
+
+function hazardInfoHtml(data) {
+    return hazardInfoHtmlForHazard(currentHazard, data);
+}
+
+
+function stormHazardLabel(hazardKey) {
+    const t = translations[currentLanguage];
+
+    const labels = {
+        thunder: t.thunder,
+        hail: t.hail,
+        large_hail: t.largeHail,
+        very_large_hail: t.veryLargeHail
+    };
+
+    return labels[hazardKey] || hazardKey;
+}
+
+
+function windThresholdForYellow(hazardKey) {
+    const thresholds = {
+        wind_10: 20,
+        wind_17: 10,
+        wind_24: 5,
+        wind_28: 5
+    };
+
+    return thresholds[hazardKey] ?? Infinity;
+}
+
+
+function overallPopupHazardsHtml(data) {
+
+    const t = translations[currentLanguage];
+    const stormKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
+    const windKeys = ["wind_10", "wind_17", "wind_24", "wind_28"];
+
+    let html = "";
+    let significantCount = 0;
+
+    /* --------------------------------------------------------
+       STORM: show ONLY yellow-or-higher parameters (>=10%).
+       Each significant storm parameter gets its own impacts
+       and recommendations from hazard_info.json.
+       -------------------------------------------------------- */
+
+    stormKeys.forEach(hazardKey => {
+        const probability = Number(data[hazardKey]);
+
+        if (!Number.isFinite(probability) || probability < 10) {
+            return;
+        }
+
+        significantCount += 1;
+
+        html += `
+            <div class="popup-section">${stormHazardLabel(hazardKey)}</div>
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Ансамбл сигнал" : "Ensemble signal"}:
+                <b>${formatProbability(probability)}</b>
+            </div>
+            ${hazardInfoHtmlForHazard(hazardKey, data)}
+        `;
+    });
+
+    /* --------------------------------------------------------
+       WIND: show the group only when final wind risk is yellow
+       or higher. Inside it, show only wind thresholds that have
+       reached their own yellow probability threshold.
+       -------------------------------------------------------- */
+
+    const windLevel = String(data.wind_risk_level || "green").toLowerCase();
+
+    if (windLevel !== "green") {
+        significantCount += 1;
+
+        const windLabels = {
+            wind_10: t.wind10,
+            wind_17: t.wind17,
+            wind_24: t.wind24,
+            wind_28: t.wind28
+        };
+
+        let windRows = "";
+
+        windKeys.forEach(hazardKey => {
+            const probability = Number(data[hazardKey]);
+            const threshold = windThresholdForYellow(hazardKey);
+
+            if (!Number.isFinite(probability) || probability < threshold) {
+                return;
+            }
+
+            windRows += `
+                <div class="popup-row">
+                    ${windLabels[hazardKey]}:
+                    <b>${formatProbability(probability)}</b>
+                </div>
+            `;
+        });
+
+        const riskNamesSr = {
+            yellow: "низак",
+            orange: "умерен",
+            red: "висок"
+        };
+
+        const riskNamesEn = {
+            yellow: "low",
+            orange: "moderate",
+            red: "high"
+        };
+
+        html += `
+            <div class="popup-section">${t.windGroup}</div>
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Ниво ризика" : "Risk level"}:
+                <b>${currentLanguage === "sr" ? (riskNamesSr[windLevel] || windLevel) : (riskNamesEn[windLevel] || windLevel)}</b>
+            </div>
+
+            ${windRows}
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Очекивани удари" : "Expected gusts"}:
+                <b>${formatNumber(data.gust_median,1)}–${formatNumber(data.gust_p90,1)} m/s (${formatNumber(Number(data.gust_median)*3.6,0)}–${formatNumber(Number(data.gust_p90)*3.6,0)} km/h)</b>
+            </div>
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Ветар" : "Wind"}:
+                <b>${formatNumber(data.wind_speed,1)} m/s, ${data.wind_direction_text ?? "—"} (${formatNumber(data.wind_direction,0)}°)</b>
+            </div>
+
+            <div class="popup-risk-box">
+                <div class="popup-section">${currentLanguage === "sr" ? "Утицаји" : "Impacts"}</div>
+                <div>${data.wind_impacts_sr ?? "—"}</div>
+
+                <div class="popup-section">${currentLanguage === "sr" ? "Препоруке" : "Recommendations"}</div>
+                <div>${data.wind_recommendations_sr ?? "—"}</div>
+
+                <div class="popup-note">${t.riskNote}</div>
+            </div>
+        `;
+    }
+
+    if (significantCount === 0) {
+        return `
+            <div class="overview-muted">
+                ${currentLanguage === "sr"
+                    ? "Нема параметара са значајним ризиком у овом 3-часовном термину."
+                    : "No parameters with significant risk in this 3-hour period."}
+            </div>
+        `;
+    }
+
+    return html;
+}
+
 
 /* ============================================================
    DATE FORMAT
@@ -1763,6 +1907,33 @@ function getProbabilityColor(
    STYLE
    ============================================================ */
 
+function stormRiskLevel(data) {
+    if (!data) return 0;
+    const keys = ["thunder", "hail", "large_hail", "very_large_hail"];
+    let strongest = 0;
+    keys.forEach(key => {
+        const value = Number(data[key]);
+        if (!Number.isFinite(value)) return;
+        const level = value >= 50 ? 4 : value >= 30 ? 3 : value >= 20 ? 2 : value >= 10 ? 1 : 0;
+        strongest = Math.max(strongest, level);
+    });
+    return strongest;
+}
+
+function windRiskLevel(data) {
+    if (!data) return 0;
+    const levels = {green:0, yellow:1, orange:2, red:3, purple:4};
+    return levels[String(data.wind_risk_level || "green").toLowerCase()] ?? 0;
+}
+
+function overallRiskLevel(data) {
+    return Math.max(stormRiskLevel(data), windRiskLevel(data));
+}
+
+function overallRiskColor(level) {
+    return ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"][level] || "#a6d96a";
+}
+
 function styleFeature(
     feature
 ) {
@@ -1772,17 +1943,27 @@ function styleFeature(
             feature.properties
         );
 
-    const value =
-        data
-        ? data[currentHazard]
-        : null;
+    const value = data ? data[currentHazard] : null;
+
+    let fillColor;
+    if (currentHazard === "overall_risk") {
+        fillColor = data ? overallRiskColor(overallRiskLevel(data)) : "#cccccc";
+    } else if (currentHazard === "wind_risk_level") {
+        const windRiskColors = {green:"#a6d96a", yellow:"#ffffbf", orange:"#fdae61", red:"#d7191c"};
+        fillColor = windRiskColors[String(value || "green").toLowerCase()] || "#cccccc";
+    } else if (["wind_10","wind_17","wind_24","wind_28"].includes(currentHazard)) {
+        const thresholds = {
+            wind_10:[20,50,80], wind_17:[10,30,60], wind_24:[5,15,30], wind_28:[5,10,20]
+        }[currentHazard];
+        const n = Number(value);
+        fillColor = !Number.isFinite(n) ? "#cccccc" : n >= thresholds[2] ? "#d7191c" : n >= thresholds[1] ? "#fdae61" : n >= thresholds[0] ? "#ffffbf" : "#a6d96a";
+    } else {
+        fillColor = getProbabilityColor(value);
+    }
 
     return {
 
-        fillColor:
-            getProbabilityColor(
-                value
-            ),
+        fillColor: fillColor,
 
         weight: 1,
 
@@ -1804,185 +1985,125 @@ function popupContent(
     properties
 ) {
 
-    const t =
-        translations[
-            currentLanguage
-        ];
-
-    const data =
-        getMunicipalityData(
-            properties
-        );
-
-    const name =
-        municipalityName(
-            properties
-        );
+    const t = translations[currentLanguage];
+    const data = getMunicipalityData(properties);
+    const name = municipalityName(properties);
 
     if (!data) {
-
         return `
-            <div class="popup-title">
-                ${name}
-            </div>
-
-            <div>
-                ${t.loadError}
-            </div>
+            <div class="popup-title">${name}</div>
+            <div>${t.loadError}</div>
         `;
     }
 
-    return `
+    /* ========================================================
+       CENTRAL / OVERALL MAP
+       Only yellow-or-higher hazards are shown.
+       ======================================================== */
 
-        <div class="popup-title">
-            ${name}
-        </div>
+    if (currentHazard === "overall_risk") {
+        return `
+            <div class="popup-title">${name}</div>
+
+            <div class="popup-valid">
+                ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
+                <br>
+                ${t.lead}: +${currentModelData.forecast_hour} h
+            </div>
+
+            ${overallPopupHazardsHtml(data)}
+        `;
+    }
+
+    /* ========================================================
+       DETAIL MODE - WIND
+       ======================================================== */
+
+    if (["wind_risk_level", "wind_10", "wind_17", "wind_24", "wind_28"].includes(currentHazard)) {
+
+        const windRows = currentHazard === "wind_risk_level"
+            ? `
+                <div class="popup-row">${t.wind10}: <b>${formatProbability(data.wind_10)}</b></div>
+                <div class="popup-row">${t.wind17}: <b>${formatProbability(data.wind_17)}</b></div>
+                <div class="popup-row">${t.wind24}: <b>${formatProbability(data.wind_24)}</b></div>
+                <div class="popup-row">${t.wind28}: <b>${formatProbability(data.wind_28)}</b></div>
+            `
+            : `
+                <div class="popup-row">
+                    ${currentHazard === "wind_10" ? t.wind10 : currentHazard === "wind_17" ? t.wind17 : currentHazard === "wind_24" ? t.wind24 : t.wind28}:
+                    <b>${formatProbability(data[currentHazard])}</b>
+                </div>
+            `;
+
+        return `
+            <div class="popup-title">${name}</div>
+
+            <div class="popup-valid">
+                ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
+                <br>
+                ${t.lead}: +${currentModelData.forecast_hour} h
+            </div>
+
+            <div class="popup-section">${t.windGroup}</div>
+            ${windRows}
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Очекивани удари" : "Expected gusts"}:
+                <b>${formatNumber(data.gust_median,1)}–${formatNumber(data.gust_p90,1)} m/s (${formatNumber(Number(data.gust_median)*3.6,0)}–${formatNumber(Number(data.gust_p90)*3.6,0)} km/h)</b>
+            </div>
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Ветар" : "Wind"}:
+                <b>${formatNumber(data.wind_speed,1)} m/s, ${data.wind_direction_text ?? "—"} (${formatNumber(data.wind_direction,0)}°)</b>
+            </div>
+
+            ${data.wind_risk_level && data.wind_risk_level !== "green" ? `
+                <div class="popup-risk-box">
+                    <div class="popup-section">${currentLanguage === "sr" ? "Утицаји" : "Impacts"}</div>
+                    <div>${data.wind_impacts_sr ?? "—"}</div>
+                    <div class="popup-section">${currentLanguage === "sr" ? "Препоруке" : "Recommendations"}</div>
+                    <div>${data.wind_recommendations_sr ?? "—"}</div>
+                    <div class="popup-note">${t.riskNote}</div>
+                </div>
+            ` : ""}
+        `;
+    }
+
+    /* ========================================================
+       DETAIL MODE - STORM PARAMETER
+       ======================================================== */
+
+    const hazardLabels = {
+        thunder: t.thunder,
+        hail: t.hail,
+        large_hail: t.largeHail,
+        very_large_hail: t.veryLargeHail
+    };
+
+    return `
+        <div class="popup-title">${name}</div>
 
         <div class="popup-valid">
-
-            ${t.valid}:
-            ${formatValidTime(
-                currentModelData.valid_time
-            )}
-
+            ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
             <br>
-
-            ${t.lead}:
-            +${currentModelData.forecast_hour} h
-
+            ${t.lead}: +${currentModelData.forecast_hour} h
         </div>
 
+        <div class="popup-section">${hazardLabels[currentHazard] || currentHazard}</div>
 
         <div class="popup-row">
-
-            ⚡ ${
-                currentLanguage === "sr"
-                ? "Грмљавина"
-                : "Thunderstorm"
-            }:
-
-            <b>
-                ${formatProbability(
-                    data.thunder
-                )}
-            </b>
-
+            ${currentLanguage === "sr" ? "Ансамбл сигнал" : "Ensemble signal"}:
+            <b>${formatProbability(data[currentHazard])}</b>
         </div>
 
+        <div class="popup-section">${t.modelParameters}</div>
 
-        <div class="popup-row">
+        <div class="popup-row">${t.instability}: <b>${formatNumber(data.cape,0)} J/kg</b></div>
+        <div class="popup-row">${t.shear}: <b>${formatNumber(data.shear,1)} m/s</b></div>
+        <div class="popup-row">${t.humidity}: <b>${formatNumber(data.rh700,0)}%</b></div>
+        <div class="popup-row">${t.grid}: <b>${data.grid_points ?? "—"}</b></div>
 
-            🧊 ${
-                currentLanguage === "sr"
-                ? "Ризик од града"
-                : "Hail risk"
-            }:
-
-            <b>
-                ${formatProbability(
-                    data.hail
-                )}
-            </b>
-
-        </div>
-
-
-        <div class="popup-row">
-
-            🧊 ${
-                currentLanguage === "sr"
-                ? "Крупан град (≥ 2 cm)"
-                : "Large hail (≥ 2 cm)"
-            }:
-
-            <b>
-                ${formatProbability(
-                    data.large_hail
-                )}
-            </b>
-
-        </div>
-
-
-        <div class="popup-row">
-
-            🧊 ${
-                currentLanguage === "sr"
-                ? "Веома крупан град (≥ 5 cm)"
-                : "Very large hail (≥ 5 cm)"
-            }:
-
-            <b>
-                ${formatProbability(
-                    data.very_large_hail
-                )}
-            </b>
-
-        </div>
-
-
-        <div class="popup-section">
-            ${t.modelParameters}
-        </div>
-
-
-        <div class="popup-row">
-
-            ${t.instability}:
-
-            <b>
-                ${formatNumber(
-                    data.cape,
-                    0
-                )}
-                J/kg
-            </b>
-
-        </div>
-
-
-        <div class="popup-row">
-
-            ${t.shear}:
-
-            <b>
-                ${formatNumber(
-                    data.shear,
-                    1
-                )}
-                m/s
-            </b>
-
-        </div>
-
-
-        <div class="popup-row">
-
-            ${t.humidity}:
-
-            <b>
-                ${formatNumber(
-                    data.rh700,
-                    0
-                )}%
-            </b>
-
-        </div>
-
-
-        <div class="popup-row">
-
-            ${t.grid}:
-
-            <b>
-                ${data.grid_points ?? "—"}
-            </b>
-
-        </div>
-
-
-        ${hazardInfoHtml(data)}
-
+        ${hazardInfoHtmlForHazard(currentHazard, data)}
     `;
 }
 
@@ -2685,6 +2806,7 @@ document
                     );
 
                     redrawMap();
+                    updateLegend();
 
                     if (selectedLayer) {
                         const properties = selectedLayer.feature.properties;
@@ -2712,16 +2834,63 @@ const stormGroupButton =
 const stormSubcontrols =
     document.getElementById("storm-subcontrols");
 
+function setOverallRiskView() {
+    currentHazard = "overall_risk";
+    document.querySelectorAll(".layer-button").forEach(btn => btn.classList.remove("active"));
+    redrawMap();
+    updateLegend();
+
+    if (selectedLayer) {
+        const properties = selectedLayer.feature.properties;
+        if (isMobileView() && document.getElementById("mobile-detail-panel").classList.contains("open")) {
+            openMobileDetail(properties);
+        } else {
+            selectedLayer.setPopupContent(popupContent(properties));
+        }
+    }
+}
+
+function openHazardGroup(group) {
+    const stormOpen = group === "storm";
+    const windOpen = group === "wind";
+
+    stormSubcontrols.classList.toggle("open", stormOpen);
+    stormGroupButton.classList.toggle("open", stormOpen);
+
+    windSubcontrols.classList.toggle("open", windOpen);
+    windGroupButton.classList.toggle("open", windOpen);
+
+    // Opening a group is navigation only. Until a sub-parameter is chosen,
+    // keep the central map on the combined strongest-risk view.
+    setOverallRiskView();
+}
+
 stormGroupButton.addEventListener(
     "click",
     () => {
-        const isOpen =
-            stormSubcontrols.classList.toggle("open");
+        if (stormSubcontrols.classList.contains("open")) {
+            stormSubcontrols.classList.remove("open");
+            stormGroupButton.classList.remove("open");
+            setOverallRiskView();
+        } else {
+            openHazardGroup("storm");
+        }
+    }
+);
 
-        stormGroupButton.classList.toggle(
-            "open",
-            isOpen
-        );
+const windGroupButton = document.getElementById("wind-group-button");
+const windSubcontrols = document.getElementById("wind-subcontrols");
+
+windGroupButton.addEventListener(
+    "click",
+    () => {
+        if (windSubcontrols.classList.contains("open")) {
+            windSubcontrols.classList.remove("open");
+            windGroupButton.classList.remove("open");
+            setOverallRiskView();
+        } else {
+            openHazardGroup("wind");
+        }
     }
 );
 
@@ -2946,7 +3115,8 @@ function overviewRiskName(key) {
         thunder: t.thunder.replace("⚡ ", ""),
         hail: t.hail.replace("🧊 ", ""),
         large_hail: t.largeHail.replace("🧊 ", ""),
-        very_large_hail: t.veryLargeHail.replace("🧊 ", "")
+        very_large_hail: t.veryLargeHail.replace("🧊 ", ""),
+        wind_10: t.wind10, wind_17: t.wind17, wind_24: t.wind24, wind_28: t.wind28
     };
 
     return names[key];
@@ -2959,26 +3129,33 @@ function overviewDateKey(isoString) {
 }
 
 function overviewDayRisk(forecasts, municipalityID, dateKey) {
-    const hazardKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
-    let max = 0;
+    // Return the strongest daily risk category across ALL hazards.
+    // 0 green, 1 yellow, 2 orange, 3 red, 4 purple.
+    let strongest = 0;
+    const stormKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
+    const windLevel = {green:0, yellow:1, orange:2, red:3, purple:4};
+
     forecasts.forEach(forecast => {
         if (overviewDateKey(forecast.valid_time) !== dateKey) return;
         const municipality = forecast.municipalities[municipalityID];
         if (!municipality) return;
-        hazardKeys.forEach(key => {
+
+        stormKeys.forEach(key => {
             const value = Number(municipality[key]);
-            if (Number.isFinite(value)) max = Math.max(max, value);
+            if (!Number.isFinite(value)) return;
+            const level = value >= 50 ? 4 : value >= 30 ? 3 : value >= 20 ? 2 : value >= 10 ? 1 : 0;
+            strongest = Math.max(strongest, level);
         });
+
+        const w = String(municipality.wind_risk_level || "green").toLowerCase();
+        strongest = Math.max(strongest, windLevel[w] ?? 0);
     });
-    return max;
+
+    return strongest;
 }
 
-function overviewRiskClass(value) {
-    if (value >= 50) return "risk-purple";
-    if (value >= 30) return "risk-red";
-    if (value >= 20) return "risk-orange";
-    if (value >= 10) return "risk-yellow";
-    return "risk-green";
+function overviewRiskClass(level) {
+    return ["risk-green", "risk-yellow", "risk-orange", "risk-red", "risk-purple"][level] || "risk-green";
 }
 
 function monthCalendarHtml(year, month, activeDates, forecasts, municipalityID) {
@@ -3024,49 +3201,26 @@ function renderOverview(forecasts, feature) {
 
     const t = translations[currentLanguage];
     const municipalityID = municipalityId(feature.properties);
-
-    const hazards = [
-        "thunder",
-        "hail",
-        "large_hail",
-        "very_large_hail"
-    ];
-
     const displayedForecasts = overviewSelectedDate
         ? forecasts.filter(forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate)
         : forecasts;
 
-    let riskHtml = "";
+    function buildGroupHtml(title, hazardKeys) {
+        let items = "";
 
-    hazards.forEach(
-        hazardKey => {
+        hazardKeys.forEach(hazardKey => {
+            const result = buildRiskWindows(displayedForecasts, municipalityID, hazardKey);
 
-            const result = buildRiskWindows(
-                displayedForecasts,
-                municipalityID,
-                hazardKey
-            );
+            if (result.windows.length === 0 && !overviewShowAll) return;
 
-            if (
-                result.windows.length === 0
-                && !overviewShowAll
-            ) {
-                return;
-            }
-
-            let periodsHtml = "";
-
+            let periodsHtml;
             if (result.windows.length > 0) {
-                periodsHtml = result.windows
-                    .map(
-                        window => `
-                            <div class="overview-period">
-                                ${formatOverviewInterval(window.start, window.end)}
-                                — <b>${formatProbability(window.maxProbability)}</b>
-                            </div>
-                        `
-                    )
-                    .join("");
+                periodsHtml = result.windows.map(window => `
+                    <div class="overview-period">
+                        ${formatOverviewInterval(window.start, window.end)}
+                        — <b>${formatProbability(window.maxProbability)}</b>
+                    </div>
+                `).join("");
             } else {
                 periodsHtml = `
                     <div class="overview-muted">
@@ -3076,81 +3230,48 @@ function renderOverview(forecasts, feature) {
                 `;
             }
 
-            riskHtml += `
+            items += `
                 <div class="overview-risk">
-                    <div class="overview-risk-name">
-                        ${overviewRiskName(hazardKey)}
-                    </div>
+                    <div class="overview-risk-name">${overviewRiskName(hazardKey)}</div>
                     ${periodsHtml}
                 </div>
             `;
-        }
-    );
+        });
 
-    if (!riskHtml) {
-        riskHtml = `
-            <div class="overview-risk">
-                <div class="overview-muted">
-                    ${t.noSignificantSignal}
-                </div>
-            </div>
-        `;
+        // Hide the whole hazard group when nothing significant exists,
+        // unless the user explicitly asks to show insignificant hazards.
+        if (!items) return "";
+        return `<div class="overview-group"><div class="overview-group-title">${title}</div>${items}</div>`;
     }
 
-    document.getElementById("overview-title").textContent =
-        municipalityName(feature.properties);
+    const stormHtml = buildGroupHtml(t.stormGroup, ["thunder","hail","large_hail","very_large_hail"]);
+    const windHtml = buildGroupHtml(t.windGroup, ["wind_10","wind_17","wind_24","wind_28"]);
+    const groupsHtml = stormHtml + windHtml || `
+        <div class="overview-risk"><div class="overview-muted">${t.noSignificantSignal}</div></div>`;
 
-    document.getElementById("overview-subtitle").textContent =
-        t.overviewTitle;
+    document.getElementById("overview-title").textContent = municipalityName(feature.properties);
+    document.getElementById("overview-subtitle").textContent = t.overviewTitle;
 
     document.getElementById("overview-body").innerHTML = `
         ${overviewCalendarsHtml(forecasts, municipalityID)}
-
         <div class="overview-calendar-actions">
             <button type="button" id="overview-all-days" class="overview-all-days">${t.allFiveDays}</button>
             <div class="overview-day-heading">${overviewSelectedDate ? t.selectedDay + ": " + formatOverviewDateKey(overviewSelectedDate) : t.overviewTitle}</div>
         </div>
-
         <div class="overview-toolbar">
-            <label>
-                <input
-                    type="checkbox"
-                    id="overview-show-all"
-                    ${overviewShowAll ? "checked" : ""}
-                >
-                ${t.showAllRisks}
-            </label>
+            <label><input type="checkbox" id="overview-show-all" ${overviewShowAll ? "checked" : ""}> ${t.showAllRisks}</label>
         </div>
-
-        <div class="overview-group">
-            <div class="overview-group-title">
-                ${t.stormGroup}
-            </div>
-            ${riskHtml}
-        </div>
+        ${groupsHtml}
     `;
 
     document.querySelectorAll("[data-overview-date]").forEach(button => {
         button.addEventListener("click", () => {
             overviewSelectedDate = button.dataset.overviewDate;
-
-            // Move the 3-hour timeline to the first available
-            // forecast term of the selected calendar day.
-            const firstForecastOfDay = forecasts.find(
-                forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate
-            );
-
+            const firstForecastOfDay = forecasts.find(forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate);
             if (firstForecastOfDay) {
-                const targetIndex = FORECAST_HOURS.indexOf(
-                    Number(firstForecastOfDay.forecast_hour)
-                );
-
-                if (targetIndex >= 0) {
-                    stopPlay();
-                    loadForecast(targetIndex);
-                }
+                const targetIndex = FORECAST_HOURS.indexOf(Number(firstForecastOfDay.forecast_hour));
+                if (targetIndex >= 0) { stopPlay(); loadForecast(targetIndex); }
             }
-
             renderOverview(forecasts, feature);
         });
     });
@@ -3160,15 +3281,10 @@ function renderOverview(forecasts, feature) {
         renderOverview(forecasts, feature);
     });
 
-    document
-        .getElementById("overview-show-all")
-        .addEventListener(
-            "change",
-            event => {
-                overviewShowAll = event.target.checked;
-                renderOverview(forecasts, feature);
-            }
-        );
+    document.getElementById("overview-show-all").addEventListener("change", event => {
+        overviewShowAll = event.target.checked;
+        renderOverview(forecasts, feature);
+    });
 }
 
 
@@ -4147,6 +4263,13 @@ function updateLanguage() {
         .textContent =
             t.stormGroup;
 
+    document.getElementById("wind-group-label").textContent = t.windGroup;
+    document.getElementById("btn-wind-risk").textContent = t.windOverall;
+    document.getElementById("btn-wind-10").textContent = t.wind10;
+    document.getElementById("btn-wind-17").textContent = t.wind17;
+    document.getElementById("btn-wind-24").textContent = t.wind24;
+    document.getElementById("btn-wind-28").textContent = t.wind28;
+
     document
         .getElementById(
             "btn-thunder"
@@ -4301,63 +4424,34 @@ function updateLegend(
             "map-legend"
         );
 
-    if (
-        !element
-    ) {
+    if (!element) {
         return;
     }
 
-    const t =
-        translations[
-            currentLanguage
-        ];
+    const t = translations[currentLanguage];
+
+    if (currentHazard === "overall_risk" || currentHazard === "wind_risk_level") {
+        const labels = currentLanguage === "sr"
+            ? ["без значајног ризика", "низак", "умерен", "висок", "веома висок"]
+            : ["no significant risk", "low", "moderate", "high", "very high"];
+        const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        const count = currentHazard === "wind_risk_level" ? 4 : 5;
+        element.innerHTML = `
+            <div class="legend-title">${currentLanguage === "sr" ? "Ниво ризика" : "Risk level"}</div>
+            ${labels.slice(0, count).map((label, i) => `
+                <div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>
+            `).join("")}
+        `;
+        return;
+    }
 
     element.innerHTML = `
-
-        <div class="legend-title">
-            ${t.legend}
-        </div>
-
-        <div class="legend-row">
-            <span
-                class="legend-box"
-                style="background:#a6d96a">
-            </span>
-            &lt; 10%
-        </div>
-
-        <div class="legend-row">
-            <span
-                class="legend-box"
-                style="background:#ffffbf">
-            </span>
-            10–20%
-        </div>
-
-        <div class="legend-row">
-            <span
-                class="legend-box"
-                style="background:#fdae61">
-            </span>
-            20–30%
-        </div>
-
-        <div class="legend-row">
-            <span
-                class="legend-box"
-                style="background:#d7191c">
-            </span>
-            30–50%
-        </div>
-
-        <div class="legend-row">
-            <span
-                class="legend-box"
-                style="background:#7b3294">
-            </span>
-            ≥ 50%
-        </div>
-
+        <div class="legend-title">${t.legend}</div>
+        <div class="legend-row"><span class="legend-box" style="background:#a6d96a"></span>&lt; 10%</div>
+        <div class="legend-row"><span class="legend-box" style="background:#ffffbf"></span>10–20%</div>
+        <div class="legend-row"><span class="legend-box" style="background:#fdae61"></span>20–30%</div>
+        <div class="legend-row"><span class="legend-box" style="background:#d7191c"></span>30–50%</div>
+        <div class="legend-row"><span class="legend-box" style="background:#7b3294"></span>≥ 50%</div>
     `;
 }
 
