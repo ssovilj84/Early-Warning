@@ -330,10 +330,12 @@
         }
 
         .popup-valid {
-            color: #666;
-            font-size: 12px;
-            margin-bottom: 9px;
-        }
+    color: #222;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
 
         .popup-section {
             font-weight: bold;
@@ -1197,7 +1199,9 @@ function currentHazardInfo() {
 }
 
 
-function hazardInfoHtml() {
+function hazardInfoHtml(
+    data
+) {
 
     const info =
         currentHazardInfo();
@@ -1207,9 +1211,39 @@ function hazardInfoHtml() {
             currentLanguage
         ];
 
-    if (!info) {
+    if (
+        !info ||
+        !data
+    ) {
         return "";
     }
+
+
+    const probability =
+        Number(
+            data[
+                currentHazard
+            ]
+        );
+
+
+    /*
+       ZELENI SIGNAL:
+       ispod 10% ne prikazujemo
+       uticaje i preporuke.
+    */
+
+    if (
+        !Number.isFinite(
+            probability
+        )
+        ||
+        probability < 10
+    ) {
+
+        return "";
+    }
+
 
     const impacts =
         Array.isArray(
@@ -1218,12 +1252,14 @@ function hazardInfoHtml() {
         ? info.impacts
         : [];
 
+
     const recommendations =
         Array.isArray(
             info.recommendations
         )
         ? info.recommendations
         : [];
+
 
     return `
 
@@ -1244,6 +1280,7 @@ function hazardInfoHtml() {
                 }
             </ul>
 
+
             <div class="popup-section">
                 ${info.recommendation_title}
             </div>
@@ -1259,6 +1296,7 @@ function hazardInfoHtml() {
                 }
             </ul>
 
+
             <div class="popup-note">
                 ${t.riskNote}
             </div>
@@ -1266,7 +1304,6 @@ function hazardInfoHtml() {
         </div>
     `;
 }
-
 
 /* ============================================================
    DATE FORMAT
@@ -1587,7 +1624,7 @@ function popupContent(
         </div>
 
 
-        ${hazardInfoHtml()}
+        ${hazardInfoHtml(data)}
 
     `;
 }
