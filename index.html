@@ -487,148 +487,88 @@
 
         @media (max-width: 800px) {
 
-            .header {
-                padding: 55px 12px 10px 12px;
-            }
-
-            .header h1 {
-                font-size: 17px;
-            }
-
-            .language-switch {
-                left: 12px;
-                right: auto;
-                top: 10px;
-            }
-
-            .subtitle {
-                font-size: 12px;
-            }
-
-            .update-info {
-                font-size: 10px;
-            }
-
-            .toolbar {
-                padding: 8px 10px;
-            }
-
-            .search-wrapper {
-                flex: 1 1 100%;
-                max-width: none;
-            }
-
-            .action-button {
-                flex: 1 1 30%;
-                font-size: 11px;
-            }
-
-            .controls {
-                padding: 8px 10px;
-            }
-
-            .layer-button {
-                flex: 1 1 45%;
-                font-size: 11px;
-                padding: 8px 5px;
-            }
-
-            .timeline-panel {
-                padding: 8px 10px 9px 10px;
-            }
-
-            .timeline-main {
-                gap: 4px;
-            }
-
-            .time-button {
-                min-width: 36px;
-                height: 34px;
-                padding: 3px;
-                font-size: 13px;
-            }
-
-            .time-info {
-                font-size: 10px;
-            }
-
-            #map {
-                height: 65vh;
-                min-height: 470px;
-            }
-
-            .legend {
-                padding: 6px 8px;
-                font-size: 10px;
-                line-height: 15px;
-            }
-
-            .legend-title {
-                font-size: 10px;
-                margin-bottom: 2px;
-            }
-
-            .legend-row {
-                gap: 4px;
-            }
-
-            .legend-box {
-                width: 12px;
-                height: 9px;
-            }
-
-            .leaflet-bottom.leaflet-right {
-                bottom: 34px;
-                right: 3px;
-            }
-
+            .header { padding: 55px 12px 10px 12px; }
+            .header h1 { font-size: 17px; }
+            .language-switch { left: 12px; right: auto; top: 10px; }
+            .subtitle { font-size: 12px; }
+            .update-info { font-size: 10px; }
+            .toolbar { padding: 8px 10px; }
+            .search-wrapper { flex: 1 1 100%; max-width: none; }
+            .action-button { flex: 1 1 30%; font-size: 11px; }
+            .controls { padding: 8px 10px; }
+            .layer-button { flex: 1 1 45%; font-size: 11px; padding: 8px 5px; }
+            .timeline-panel { padding: 8px 10px 9px 10px; }
+            .timeline-main { gap: 4px; }
+            .time-button { min-width: 36px; height: 34px; padding: 3px; font-size: 13px; }
+            .time-info { font-size: 10px; }
+            #map { height: 65vh; min-height: 470px; }
+            .legend { padding: 6px 8px; font-size: 10px; line-height: 15px; }
+            .legend-title { font-size: 10px; margin-bottom: 2px; }
+            .legend-row { gap: 4px; }
+            .legend-box { width: 12px; height: 9px; }
+            .leaflet-bottom.leaflet-right { bottom: 34px; right: 3px; }
             .disclaimer {
-                position: fixed;
-                left: 0;
-                right: 0;
-                bottom: 0;
-
-                width: 100%;
-                max-width: none;
-
-                transform: none;
-
-                padding: 5px 8px;
-
-                background: rgba(255,255,255,0.96);
-
-                border-radius: 0;
-                border-top: 1px solid #ddd;
-
-                box-shadow: none;
-
-                font-size: 9px;
-                line-height: 1.2;
-
-                text-align: center;
-
-                z-index: 2000;
-
-		.leaflet-popup-content-wrapper {
-    max-height: 72vh;
-}
-
-.leaflet-popup-content {
-    width: auto !important;
-    max-width: calc(100vw - 70px);
-
-    max-height: 64vh;
-
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    margin: 12px 10px 12px 12px;
-
-    font-size: 12px;
-
-    scrollbar-width: thin;
-}
+                position: fixed; left: 0; right: 0; bottom: 0; width: 100%; max-width: none;
+                transform: none; padding: 5px 8px; background: rgba(255,255,255,0.96);
+                border-radius: 0; border-top: 1px solid #ddd; box-shadow: none; font-size: 9px;
+                line-height: 1.2; text-align: center; z-index: 2000;
             }
+            /* Mobile uses the full-screen detail panel instead of Leaflet popup. */
+            .leaflet-popup { display: none !important; }
+        }
+
+        /* =====================================================
+           MOBILE MUNICIPALITY DETAIL PANEL
+           ===================================================== */
+        .mobile-detail-panel {
+            display: none;
+        }
+
+        @media (max-width: 800px) {
+            .mobile-detail-panel {
+                position: fixed;
+                inset: 0;
+                z-index: 10000;
+                background: #fff;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+            }
+            .mobile-detail-panel.open { display: block; }
+            .mobile-detail-header {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 14px 16px;
+                background: #fff;
+                border-bottom: 1px solid #ddd;
+            }
+            .mobile-detail-heading {
+                margin: 0;
+                font-size: 18px;
+                line-height: 1.25;
+            }
+            .mobile-detail-close {
+                flex: 0 0 42px;
+                width: 42px;
+                height: 42px;
+                border: 0;
+                border-radius: 50%;
+                background: #f0f0f0;
+                font-size: 28px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .mobile-detail-body {
+                padding: 14px 16px 32px;
+                font-size: 14px;
+                line-height: 1.45;
+            }
+            body.mobile-detail-open { overflow: hidden; }
         }
 
     </style>
@@ -838,6 +778,14 @@
 
 </div>
 
+
+<div id="mobile-detail-panel" class="mobile-detail-panel" aria-hidden="true">
+    <div class="mobile-detail-header">
+        <h2 id="mobile-detail-heading" class="mobile-detail-heading"></h2>
+        <button id="mobile-detail-close" class="mobile-detail-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="mobile-detail-body" class="mobile-detail-body"></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
@@ -1646,6 +1594,49 @@ function popupContent(
 
 
 /* ============================================================
+   MOBILE DETAIL PANEL
+   ============================================================ */
+
+function isMobileView() {
+    return window.matchMedia("(max-width: 800px)").matches;
+}
+
+function openMobileDetail(properties) {
+    if (!isMobileView()) return false;
+
+    const panel = document.getElementById("mobile-detail-panel");
+    const heading = document.getElementById("mobile-detail-heading");
+    const body = document.getElementById("mobile-detail-body");
+
+    heading.textContent = municipalityName(properties);
+    body.innerHTML = popupContent(properties);
+
+    /* The panel header already contains the municipality name. */
+    const duplicateTitle = body.querySelector(".popup-title");
+    if (duplicateTitle) duplicateTitle.remove();
+
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+    document.body.classList.add("mobile-detail-open");
+    panel.scrollTop = 0;
+    map.closePopup();
+    return true;
+}
+
+function closeMobileDetail() {
+    const panel = document.getElementById("mobile-detail-panel");
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("mobile-detail-open");
+}
+
+document.getElementById("mobile-detail-close").addEventListener("click", closeMobileDetail);
+
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeMobileDetail();
+});
+
+/* ============================================================
    FEATURE EVENTS
    ============================================================ */
 
@@ -1714,6 +1705,10 @@ function onEachFeature(
                         municipalityId(
                             feature.properties
                         );
+
+                    if (openMobileDetail(feature.properties)) {
+                        return;
+                    }
 
                     this.setPopupContent(
                         popupContent(
@@ -1811,6 +1806,10 @@ async function loadForecast(
         redrawMap();
 
         restoreSelectedMunicipality();
+
+        if (selectedLayer && isMobileView() && document.getElementById("mobile-detail-panel").classList.contains("open")) {
+            openMobileDetail(selectedLayer.feature.properties);
+        }
 
         updateTimeButtons();
 
@@ -2290,21 +2289,15 @@ document
 
                     redrawMap();
 
-                    if (
-                        selectedLayer
-                    ) {
+                    if (selectedLayer) {
+                        const properties = selectedLayer.feature.properties;
 
-                        selectedLayer
-                            .setPopupContent(
-                                popupContent(
-                                    selectedLayer
-                                    .feature
-                                    .properties
-                                )
-                            );
-
-                        selectedLayer
-                            .openPopup();
+                        if (isMobileView() && document.getElementById("mobile-detail-panel").classList.contains("open")) {
+                            openMobileDetail(properties);
+                        } else {
+                            selectedLayer.setPopupContent(popupContent(properties));
+                            selectedLayer.openPopup();
+                        }
                     }
                 }
             );
@@ -2650,6 +2643,10 @@ function openMunicipality(
                             11
                     }
                 );
+
+                if (openMobileDetail(layer.feature.properties)) {
+                    return;
+                }
 
                 layer.setPopupContent(
                     popupContent(
@@ -3463,6 +3460,12 @@ function showStatus(
         );
 }
 
+
+window.addEventListener("resize", () => {
+    if (!isMobileView()) {
+        closeMobileDetail();
+    }
+});
 
 /* ============================================================
    START
