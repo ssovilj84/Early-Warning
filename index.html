@@ -198,6 +198,268 @@
             border-color: #222;
         }
 
+        .hazard-group-wrap {
+            width: 100%;
+        }
+
+        .hazard-group-button {
+            border: 1px solid #888;
+            background: #222;
+            color: white;
+            border-radius: 7px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hazard-group-button .arrow {
+            transition: transform 0.18s ease;
+        }
+
+        .hazard-group-button.open .arrow {
+            transform: rotate(180deg);
+        }
+
+        .hazard-subcontrols {
+            display: none;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .hazard-subcontrols.open {
+            display: flex;
+        }
+
+        /* Five-day municipality overview opened from search */
+        .overview-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: min(480px, 42vw);
+            height: 100vh;
+            z-index: 9500;
+            background: #fff;
+            box-shadow: -4px 0 18px rgba(0,0,0,0.18);
+            overflow-y: auto;
+        }
+
+        .overview-panel.open {
+            display: block;
+        }
+
+        .overview-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 18px;
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .overview-title {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.25;
+        }
+
+        .overview-subtitle {
+            margin-top: 4px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .overview-close {
+            flex: 0 0 40px;
+            width: 40px;
+            height: 40px;
+            border: 0;
+            border-radius: 50%;
+            background: #f0f0f0;
+            font-size: 26px;
+            cursor: pointer;
+        }
+
+        .overview-body {
+            padding: 16px 18px 28px;
+        }
+
+        .overview-toolbar {
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e4e4e4;
+            font-size: 13px;
+        }
+
+        .overview-group {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .overview-group-title {
+            padding: 11px 12px;
+            background: #f6f6f6;
+            font-weight: 700;
+        }
+
+        .overview-risk {
+            padding: 10px 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .overview-risk:first-of-type {
+            border-top: 0;
+        }
+
+        .overview-risk-name {
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .overview-period {
+            margin: 3px 0;
+            font-size: 13px;
+        }
+
+        .overview-muted {
+            color: #777;
+            font-size: 13px;
+        }
+
+        /* =====================================================
+           OVERVIEW CALENDAR
+           ===================================================== */
+
+        .overview-calendars {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .overview-calendar {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 9px;
+            background: #fff;
+        }
+
+        .overview-calendar-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 7px;
+            text-transform: capitalize;
+        }
+
+        .overview-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+
+        .overview-weekday {
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: #777;
+            padding: 2px 0 4px;
+        }
+
+        .overview-day {
+            aspect-ratio: 1 / 1;
+            min-width: 0;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #222;
+            padding: 0;
+        }
+
+        button.overview-day { cursor: pointer; }
+        button.overview-day:hover { background: #f4f4f4; }
+        .overview-day.inactive { color: #c8c8c8; font-weight: 400; }
+        .overview-day.empty { visibility: hidden; }
+        .overview-day.risk-green { border-color: #78b943; }
+        .overview-day.risk-yellow { border-color: #d9cf35; }
+        .overview-day.risk-orange { border-color: #ed8d35; }
+        .overview-day.risk-red { border-color: #d7191c; }
+        .overview-day.risk-purple { border-color: #7b3294; }
+        .overview-day.selected {
+            box-shadow: 0 0 0 2px #222;
+            background: #f7f7f7;
+        }
+
+        .overview-calendar-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 2px 0 12px;
+        }
+
+        .overview-all-days {
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            background: #fff;
+            padding: 6px 9px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .overview-day-heading {
+            font-size: 12px;
+            font-weight: 700;
+            color: #555;
+        }
+
+        .overview-calendar-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px 10px;
+            margin: -3px 0 13px;
+            font-size: 9px;
+            color: #666;
+        }
+
+        .overview-calendar-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .overview-calendar-dot {
+            width: 9px;
+            height: 9px;
+            border: 2px solid;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        @media (max-width: 420px) {
+            .overview-calendars { gap: 6px; }
+            .overview-calendar { padding: 6px; }
+            .overview-day { font-size: 10px; border-width: 1.5px; }
+            .overview-weekday { font-size: 8px; }
+        }
+
         /* =====================================================
            TIMELINE
            ===================================================== */
@@ -515,6 +777,15 @@
                 border-radius: 0; border-top: 1px solid #ddd; box-shadow: none; font-size: 9px;
                 line-height: 1.2; text-align: center; z-index: 2000;
             }
+            .hazard-group-button { width: 100%; justify-content: space-between; }
+            .hazard-subcontrols .layer-button { flex: 1 1 45%; }
+
+            .overview-panel {
+                width: 100vw;
+                height: 100dvh;
+                max-width: none;
+            }
+
             /* Mobile uses the full-screen detail panel instead of Leaflet popup. */
             .leaflet-popup { display: none !important; }
         }
@@ -657,29 +928,45 @@
 
 <div class="controls">
 
-    <button
-        class="layer-button active"
-        data-layer="thunder"
-        id="btn-thunder">
-    </button>
+    <div class="hazard-group-wrap">
 
-    <button
-        class="layer-button"
-        data-layer="hail"
-        id="btn-hail">
-    </button>
+        <button
+            class="hazard-group-button"
+            id="storm-group-button"
+            type="button">
+            <span id="storm-group-label">⛈ Ризик од олује</span>
+            <span class="arrow">▼</span>
+        </button>
 
-    <button
-        class="layer-button"
-        data-layer="large_hail"
-        id="btn-large-hail">
-    </button>
+        <div class="hazard-subcontrols" id="storm-subcontrols">
 
-    <button
-        class="layer-button"
-        data-layer="very_large_hail"
-        id="btn-very-large-hail">
-    </button>
+            <button
+                class="layer-button active"
+                data-layer="thunder"
+                id="btn-thunder">
+            </button>
+
+            <button
+                class="layer-button"
+                data-layer="hail"
+                id="btn-hail">
+            </button>
+
+            <button
+                class="layer-button"
+                data-layer="large_hail"
+                id="btn-large-hail">
+            </button>
+
+            <button
+                class="layer-button"
+                data-layer="very_large_hail"
+                id="btn-very-large-hail">
+            </button>
+
+        </div>
+
+    </div>
 
 </div>
 
@@ -789,6 +1076,17 @@
     <div id="mobile-detail-body" class="mobile-detail-body"></div>
 </div>
 
+<div id="overview-panel" class="overview-panel" aria-hidden="true">
+    <div class="overview-header">
+        <div>
+            <h2 id="overview-title" class="overview-title"></h2>
+            <div id="overview-subtitle" class="overview-subtitle"></div>
+        </div>
+        <button id="overview-close" class="overview-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="overview-body" class="overview-body"></div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
@@ -844,6 +1142,11 @@ let locationMarker = null;
 let playTimer = null;
 
 let isPlaying = false;
+
+let allForecastData = null;
+let overviewFeature = null;
+let overviewShowAll = false;
+let overviewSelectedDate = null;
 
 
 /* ============================================================
@@ -938,8 +1241,35 @@ const translations = {
         shareTitle:
             "Интерактивни приказ метеоролошких ризика",
 
+        stormGroup:
+            "⛈ Ризик од олује",
+
+        overviewTitle:
+            "Преглед ризика за наредних 5 дана",
+
+        showAllRisks:
+            "Прикажи и појаве без значајног ризика",
+
+        noSignificantSignal:
+            "Нема значајног сигнала (≥10%).",
+
+        maxSignal:
+            "Максимални ансамбл сигнал",
+
+        loadingOverview:
+            "Учитавање петодневног прегледа...",
+
         riskNote:
-            "Утицаји и препоруке односе се на случај да се прогнозирана појава реализује."
+            "Утицаји и препоруке односе се на случај да се прогнозирана појава реализује.",
+
+        allFiveDays:
+            "Свих 5 дана",
+
+        selectedDay:
+            "Изабрани дан",
+
+        riskLevels:
+            ["без значајног ризика", "низак", "умерен", "висок", "веома висок"]
     },
 
 
@@ -1029,8 +1359,35 @@ const translations = {
         shareTitle:
             "Interactive Weather Risk Map",
 
+        stormGroup:
+            "⛈ Storm risk",
+
+        overviewTitle:
+            "Risk overview for the next 5 days",
+
+        showAllRisks:
+            "Show hazards without a significant risk",
+
+        noSignificantSignal:
+            "No significant signal (≥10%).",
+
+        maxSignal:
+            "Maximum ensemble signal",
+
+        loadingOverview:
+            "Loading five-day overview...",
+
         riskNote:
-            "Impacts and recommendations apply if the forecast event occurs."
+            "Impacts and recommendations apply if the forecast event occurs.",
+
+        allFiveDays:
+            "All 5 days",
+
+        selectedDay:
+            "Selected day",
+
+        riskLevels:
+            ["no significant risk", "low", "moderate", "high", "very high"]
     }
 
 };
@@ -1670,7 +2027,10 @@ function closeMobileDetail() {
 document.getElementById("mobile-detail-close").addEventListener("click", closeMobileDetail);
 
 document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeMobileDetail();
+    if (event.key === "Escape") {
+        closeMobileDetail();
+        closeOverview();
+    }
 });
 
 /* ============================================================
@@ -2343,6 +2703,528 @@ document
 
 
 /* ============================================================
+   STORM GROUP
+   ============================================================ */
+
+const stormGroupButton =
+    document.getElementById("storm-group-button");
+
+const stormSubcontrols =
+    document.getElementById("storm-subcontrols");
+
+stormGroupButton.addEventListener(
+    "click",
+    () => {
+        const isOpen =
+            stormSubcontrols.classList.toggle("open");
+
+        stormGroupButton.classList.toggle(
+            "open",
+            isOpen
+        );
+    }
+);
+
+
+/* ============================================================
+   FIVE-DAY MUNICIPALITY OVERVIEW
+   ============================================================ */
+
+async function loadAllForecasts() {
+
+    if (allForecastData) {
+        return allForecastData;
+    }
+
+    const responses = await Promise.all(
+        FORECAST_HOURS.map(
+            async hour => {
+
+                const response = await fetch(
+                    forecastFile(hour),
+                    { cache: "no-store" }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        "Forecast HTTP "
+                        + response.status
+                        + " for f"
+                        + String(hour).padStart(3, "0")
+                    );
+                }
+
+                return await response.json();
+            }
+        )
+    );
+
+    allForecastData = responses;
+    return responses;
+}
+
+
+function formatOverviewMoment(isoString) {
+
+    const date = new Date(isoString);
+
+    if (currentLanguage === "sr") {
+        return (
+            String(date.getUTCDate()).padStart(2, "0")
+            + "."
+            + String(date.getUTCMonth() + 1).padStart(2, "0")
+            + "."
+            + date.getUTCFullYear()
+            + ". "
+            + String(date.getUTCHours()).padStart(2, "0")
+            + " UTC"
+        );
+    }
+
+    return date.toLocaleString(
+        "en-GB",
+        {
+            timeZone: "UTC",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }
+    ) + " UTC";
+}
+
+
+function formatOverviewInterval(startIso, endIso) {
+
+    const start = new Date(startIso);
+    const end = new Date(endIso);
+
+    const sameDay =
+        start.getUTCFullYear() === end.getUTCFullYear()
+        && start.getUTCMonth() === end.getUTCMonth()
+        && start.getUTCDate() === end.getUTCDate();
+
+    if (startIso === endIso) {
+        return formatOverviewMoment(startIso);
+    }
+
+    if (currentLanguage === "sr" && sameDay) {
+        return (
+            String(start.getUTCDate()).padStart(2, "0")
+            + "."
+            + String(start.getUTCMonth() + 1).padStart(2, "0")
+            + "."
+            + start.getUTCFullYear()
+            + ". "
+            + String(start.getUTCHours()).padStart(2, "0")
+            + "–"
+            + String(end.getUTCHours()).padStart(2, "0")
+            + " UTC"
+        );
+    }
+
+    if (currentLanguage === "en" && sameDay) {
+        return (
+            start.toLocaleDateString(
+                "en-GB",
+                {
+                    timeZone: "UTC",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                }
+            )
+            + " "
+            + String(start.getUTCHours()).padStart(2, "0")
+            + "–"
+            + String(end.getUTCHours()).padStart(2, "0")
+            + " UTC"
+        );
+    }
+
+    return (
+        formatOverviewMoment(startIso)
+        + " – "
+        + formatOverviewMoment(endIso)
+    );
+}
+
+
+function buildRiskWindows(forecasts, municipalityID, hazardKey) {
+
+    const significant = [];
+    let maxProbability = 0;
+
+    forecasts.forEach(
+        forecast => {
+
+            const municipality =
+                forecast.municipalities[municipalityID];
+
+            if (!municipality) {
+                return;
+            }
+
+            const probability =
+                Number(municipality[hazardKey]);
+
+            if (!Number.isFinite(probability)) {
+                return;
+            }
+
+            maxProbability = Math.max(
+                maxProbability,
+                probability
+            );
+
+            if (probability >= 10) {
+                significant.push({
+                    valid_time: forecast.valid_time,
+                    probability: probability
+                });
+            }
+        }
+    );
+
+    if (significant.length === 0) {
+        return {
+            maxProbability,
+            windows: []
+        };
+    }
+
+    const windows = [];
+    let current = {
+        start: significant[0].valid_time,
+        end: significant[0].valid_time,
+        maxProbability: significant[0].probability
+    };
+
+    for (let i = 1; i < significant.length; i++) {
+
+        const previousTime =
+            new Date(significant[i - 1].valid_time).getTime();
+
+        const currentTime =
+            new Date(significant[i].valid_time).getTime();
+
+        const consecutive =
+            currentTime - previousTime === 3 * 60 * 60 * 1000;
+
+        if (consecutive) {
+            current.end = significant[i].valid_time;
+            current.maxProbability = Math.max(
+                current.maxProbability,
+                significant[i].probability
+            );
+        } else {
+            windows.push(current);
+            current = {
+                start: significant[i].valid_time,
+                end: significant[i].valid_time,
+                maxProbability: significant[i].probability
+            };
+        }
+    }
+
+    windows.push(current);
+
+    return {
+        maxProbability,
+        windows
+    };
+}
+
+
+function overviewRiskName(key) {
+
+    const t = translations[currentLanguage];
+
+    const names = {
+        thunder: t.thunder.replace("⚡ ", ""),
+        hail: t.hail.replace("🧊 ", ""),
+        large_hail: t.largeHail.replace("🧊 ", ""),
+        very_large_hail: t.veryLargeHail.replace("🧊 ", "")
+    };
+
+    return names[key];
+}
+
+
+function overviewDateKey(isoString) {
+    const d = new Date(isoString);
+    return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+}
+
+function overviewDayRisk(forecasts, municipalityID, dateKey) {
+    const hazardKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
+    let max = 0;
+    forecasts.forEach(forecast => {
+        if (overviewDateKey(forecast.valid_time) !== dateKey) return;
+        const municipality = forecast.municipalities[municipalityID];
+        if (!municipality) return;
+        hazardKeys.forEach(key => {
+            const value = Number(municipality[key]);
+            if (Number.isFinite(value)) max = Math.max(max, value);
+        });
+    });
+    return max;
+}
+
+function overviewRiskClass(value) {
+    if (value >= 50) return "risk-purple";
+    if (value >= 30) return "risk-red";
+    if (value >= 20) return "risk-orange";
+    if (value >= 10) return "risk-yellow";
+    return "risk-green";
+}
+
+function monthCalendarHtml(year, month, activeDates, forecasts, municipalityID) {
+    const locale = currentLanguage === "sr" ? "sr-RS" : "en-GB";
+    const monthTitle = new Date(Date.UTC(year, month, 1)).toLocaleDateString(locale, {timeZone:"UTC", month:"long", year:"numeric"});
+    const weekdays = currentLanguage === "sr" ? ["ПОН","УТО","СРЕ","ЧЕТ","ПЕТ","СУБ","НЕД"] : ["MON","TUE","WED","THU","FRI","SAT","SUN"];
+    const first = new Date(Date.UTC(year, month, 1));
+    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const offset = (first.getUTCDay() + 6) % 7;
+    let cells = weekdays.map(day => `<div class="overview-weekday">${day}</div>`).join("");
+    for (let i = 0; i < offset; i++) cells += '<div class="overview-day empty"></div>';
+    for (let day = 1; day <= days; day++) {
+        const key = year + "-" + String(month + 1).padStart(2,"0") + "-" + String(day).padStart(2,"0");
+        if (activeDates.has(key)) {
+            const riskClass = overviewRiskClass(overviewDayRisk(forecasts, municipalityID, key));
+            const selected = overviewSelectedDate === key ? " selected" : "";
+            cells += `<button type="button" class="overview-day ${riskClass}${selected}" data-overview-date="${key}">${day}</button>`;
+        } else {
+            cells += `<div class="overview-day inactive">${day}</div>`;
+        }
+    }
+    return `<div class="overview-calendar"><div class="overview-calendar-title">${monthTitle}</div><div class="overview-calendar-grid">${cells}</div></div>`;
+}
+
+function overviewCalendarsHtml(forecasts, municipalityID) {
+    const activeDates = new Set(forecasts.map(f => overviewDateKey(f.valid_time)));
+    const firstForecastDate = new Date(forecasts[0].valid_time);
+    const y1 = firstForecastDate.getUTCFullYear();
+    const m1 = firstForecastDate.getUTCMonth();
+    const second = new Date(Date.UTC(y1, m1 + 1, 1));
+    const t = translations[currentLanguage];
+    const legendClasses = ["risk-green", "risk-yellow", "risk-orange", "risk-red", "risk-purple"];
+    const legend = t.riskLevels.map((label, i) => `<span><i class="overview-calendar-dot ${legendClasses[i]}" style="border-color:${["#78b943","#d9cf35","#ed8d35","#d7191c","#7b3294"][i]}"></i>${label}</span>`).join("");
+    return `<div class="overview-calendars">${monthCalendarHtml(y1,m1,activeDates,forecasts,municipalityID)}${monthCalendarHtml(second.getUTCFullYear(),second.getUTCMonth(),activeDates,forecasts,municipalityID)}</div><div class="overview-calendar-legend">${legend}</div>`;
+}
+
+function formatOverviewDateKey(dateKey) {
+    const [y,m,d] = dateKey.split("-");
+    return currentLanguage === "sr" ? `${d}.${m}.${y}.` : `${d}/${m}/${y}`;
+}
+
+function renderOverview(forecasts, feature) {
+
+    const t = translations[currentLanguage];
+    const municipalityID = municipalityId(feature.properties);
+
+    const hazards = [
+        "thunder",
+        "hail",
+        "large_hail",
+        "very_large_hail"
+    ];
+
+    const displayedForecasts = overviewSelectedDate
+        ? forecasts.filter(forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate)
+        : forecasts;
+
+    let riskHtml = "";
+
+    hazards.forEach(
+        hazardKey => {
+
+            const result = buildRiskWindows(
+                displayedForecasts,
+                municipalityID,
+                hazardKey
+            );
+
+            if (
+                result.windows.length === 0
+                && !overviewShowAll
+            ) {
+                return;
+            }
+
+            let periodsHtml = "";
+
+            if (result.windows.length > 0) {
+                periodsHtml = result.windows
+                    .map(
+                        window => `
+                            <div class="overview-period">
+                                ${formatOverviewInterval(window.start, window.end)}
+                                — <b>${formatProbability(window.maxProbability)}</b>
+                            </div>
+                        `
+                    )
+                    .join("");
+            } else {
+                periodsHtml = `
+                    <div class="overview-muted">
+                        ${t.noSignificantSignal}
+                        ${t.maxSignal}: ${formatProbability(result.maxProbability)}
+                    </div>
+                `;
+            }
+
+            riskHtml += `
+                <div class="overview-risk">
+                    <div class="overview-risk-name">
+                        ${overviewRiskName(hazardKey)}
+                    </div>
+                    ${periodsHtml}
+                </div>
+            `;
+        }
+    );
+
+    if (!riskHtml) {
+        riskHtml = `
+            <div class="overview-risk">
+                <div class="overview-muted">
+                    ${t.noSignificantSignal}
+                </div>
+            </div>
+        `;
+    }
+
+    document.getElementById("overview-title").textContent =
+        municipalityName(feature.properties);
+
+    document.getElementById("overview-subtitle").textContent =
+        t.overviewTitle;
+
+    document.getElementById("overview-body").innerHTML = `
+        ${overviewCalendarsHtml(forecasts, municipalityID)}
+
+        <div class="overview-calendar-actions">
+            <button type="button" id="overview-all-days" class="overview-all-days">${t.allFiveDays}</button>
+            <div class="overview-day-heading">${overviewSelectedDate ? t.selectedDay + ": " + formatOverviewDateKey(overviewSelectedDate) : t.overviewTitle}</div>
+        </div>
+
+        <div class="overview-toolbar">
+            <label>
+                <input
+                    type="checkbox"
+                    id="overview-show-all"
+                    ${overviewShowAll ? "checked" : ""}
+                >
+                ${t.showAllRisks}
+            </label>
+        </div>
+
+        <div class="overview-group">
+            <div class="overview-group-title">
+                ${t.stormGroup}
+            </div>
+            ${riskHtml}
+        </div>
+    `;
+
+    document.querySelectorAll("[data-overview-date]").forEach(button => {
+        button.addEventListener("click", () => {
+            overviewSelectedDate = button.dataset.overviewDate;
+
+            // Move the 3-hour timeline to the first available
+            // forecast term of the selected calendar day.
+            const firstForecastOfDay = forecasts.find(
+                forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate
+            );
+
+            if (firstForecastOfDay) {
+                const targetIndex = FORECAST_HOURS.indexOf(
+                    Number(firstForecastOfDay.forecast_hour)
+                );
+
+                if (targetIndex >= 0) {
+                    stopPlay();
+                    loadForecast(targetIndex);
+                }
+            }
+
+            renderOverview(forecasts, feature);
+        });
+    });
+
+    document.getElementById("overview-all-days").addEventListener("click", () => {
+        overviewSelectedDate = null;
+        renderOverview(forecasts, feature);
+    });
+
+    document
+        .getElementById("overview-show-all")
+        .addEventListener(
+            "change",
+            event => {
+                overviewShowAll = event.target.checked;
+                renderOverview(forecasts, feature);
+            }
+        );
+}
+
+
+async function openFiveDayOverview(feature) {
+
+    overviewFeature = feature;
+    overviewSelectedDate = null;
+
+    const panel = document.getElementById("overview-panel");
+    const body = document.getElementById("overview-body");
+    const t = translations[currentLanguage];
+
+    document.getElementById("overview-title").textContent =
+        municipalityName(feature.properties);
+
+    document.getElementById("overview-subtitle").textContent =
+        t.overviewTitle;
+
+    body.innerHTML = `
+        <div class="overview-muted">
+            ${t.loadingOverview}
+        </div>
+    `;
+
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+
+    try {
+        const forecasts = await loadAllForecasts();
+        renderOverview(forecasts, feature);
+    } catch (error) {
+        console.error(error);
+        body.innerHTML = `
+            <div class="overview-muted">
+                ${t.loadError}
+            </div>
+        `;
+    }
+}
+
+
+function closeOverview() {
+    const panel = document.getElementById("overview-panel");
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+}
+
+
+document
+    .getElementById("overview-close")
+    .addEventListener(
+        "click",
+        closeOverview
+    );
+
+/* ============================================================
    SEARCH NORMALIZATION
    ============================================================ */
 
@@ -2589,7 +3471,8 @@ function showSearchResults() {
                         );
 
                     openMunicipality(
-                        feature
+                        feature,
+                        true
                     );
                 }
             );
@@ -2629,13 +3512,15 @@ function performSearch() {
         "none";
 
     openMunicipality(
-        matches[0]
+        matches[0],
+        true
     );
 }
 
 
 function openMunicipality(
-    feature
+    feature,
+    showOverview = false
 ) {
 
     const id =
@@ -2680,6 +3565,20 @@ function openMunicipality(
                             11
                     }
                 );
+
+                /* Keep the searched municipality clearly visible on the map. */
+                layer.setStyle({
+                    weight: 4,
+                    color: "#111",
+                    fillOpacity: 0.88
+                });
+                layer.bringToFront();
+
+                if (showOverview) {
+                    map.closePopup();
+                    openFiveDayOverview(layer.feature);
+                    return;
+                }
 
                 if (openMobileDetail(layer.feature.properties)) {
                     return;
@@ -3243,6 +4142,13 @@ function updateLanguage() {
 
     document
         .getElementById(
+            "storm-group-label"
+        )
+        .textContent =
+            t.stormGroup;
+
+    document
+        .getElementById(
             "btn-thunder"
         )
         .textContent =
@@ -3288,7 +4194,16 @@ function updateLanguage() {
     redrawMap();
 
     if (
+        overviewFeature
+        && document.getElementById("overview-panel").classList.contains("open")
+        && allForecastData
+    ) {
+        renderOverview(allForecastData, overviewFeature);
+    }
+
+    if (
         selectedLayer
+        && !document.getElementById("overview-panel").classList.contains("open")
     ) {
 
         selectedLayer
