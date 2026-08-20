@@ -1,0 +1,25 @@
+# Credentials
+.env
+.env.*
+*.key
+*.token
+.cdsapirc
+
+# Python
+__pycache__/
+*.pyc
+
+# Meteorological raw data
+*.grib
+*.grib2
+*.grb
+*.nc
+*.idx
+
+# Temporary files
+*.tmp
+*.log
+
+# Windows / macOS
+Thumbs.db
+.DS_Store
