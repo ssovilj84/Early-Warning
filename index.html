@@ -199,7 +199,7 @@
         }
 
         /* =====================================================
-           TIME CONTROL
+           TIMELINE
            ===================================================== */
 
         .timeline-panel {
@@ -323,7 +323,7 @@
 
         .popup-section {
             font-weight: bold;
-            margin-top: 9px;
+            margin-top: 10px;
             margin-bottom: 5px;
         }
 
@@ -331,26 +331,57 @@
             margin: 4px 0;
         }
 
+        .popup-risk-box {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+        }
+
+        .popup-risk-box ul {
+            padding-left: 19px;
+            margin: 5px 0 9px 0;
+        }
+
+        .popup-risk-box li {
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .popup-note {
+            color: #666;
+            font-size: 11px;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
         /* =====================================================
            DISCLAIMER
            ===================================================== */
 
         .disclaimer {
-            position: absolute;
-            z-index: 900;
-            left: 50%;
-            bottom: 10px;
-            transform: translateX(-50%);
-            background: rgba(255,255,255,0.94);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 11px;
-            color: #555;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-            max-width: 80%;
-            text-align: center;
-            pointer-events: none;
-        }
+    position: static;
+
+    width: 100%;
+    max-width: none;
+
+    padding: 6px 10px;
+
+    background: white;
+
+    border-top: 1px solid #ddd;
+    border-radius: 0;
+
+    font-size: 11px;
+    color: #555;
+
+    box-shadow: none;
+
+    text-align: center;
+
+    transform: none;
+
+    pointer-events: none;
+}
 
         /* =====================================================
            STATUS
@@ -571,10 +602,6 @@
 
 <body>
 
-<!-- ==========================================================
-     HEADER
-     ========================================================== -->
-
 <div class="header">
 
     <div class="language-switch">
@@ -607,10 +634,6 @@
 
 </div>
 
-
-<!-- ==========================================================
-     TOOLBAR
-     ========================================================== -->
 
 <div class="toolbar">
 
@@ -656,10 +679,6 @@
 </div>
 
 
-<!-- ==========================================================
-     HAZARDS
-     ========================================================== -->
-
 <div class="controls">
 
     <button
@@ -688,10 +707,6 @@
 
 </div>
 
-
-<!-- ==========================================================
-     TIMELINE
-     ========================================================== -->
 
 <div class="timeline-panel">
 
@@ -748,10 +763,6 @@
 </div>
 
 
-<!-- ==========================================================
-     MAP
-     ========================================================== -->
-
 <div id="map"></div>
 
 
@@ -766,10 +777,6 @@
     class="status-message">
 </div>
 
-
-<!-- ==========================================================
-     SHARE
-     ========================================================== -->
 
 <div
     id="share-panel"
@@ -817,6 +824,9 @@ const FORECAST_HOURS =
 const GEOMETRY_FILE =
     "data/static/municipalities.geojson";
 
+const HAZARD_INFO_FILE =
+    "data/hazard_info.json";
+
 const GEFS_DIR =
     "data/gefs";
 
@@ -826,7 +836,6 @@ const GEFS_DIR =
    ============================================================ */
 
 let currentLanguage = "sr";
-
 let currentHazard = "thunder";
 
 let currentTimeIndex = 0;
@@ -837,6 +846,8 @@ let currentForecastHour =
 let currentModelData = null;
 
 let geometryData = null;
+
+let hazardInfo = null;
 
 let geojsonLayer = null;
 
@@ -922,9 +933,6 @@ const translations = {
         notFound:
             "Општина није пронађена.",
 
-        loading:
-            "Учитавање података...",
-
         loadError:
             "Није могуће учитати податке за овај термин.",
 
@@ -944,7 +952,10 @@ const translations = {
             "Пронађена општина",
 
         shareTitle:
-            "Интерактивни приказ метеоролошких ризика"
+            "Интерактивни приказ метеоролошких ризика",
+
+        riskNote:
+            "Утицаји и препоруке односе се на случај да се прогнозирана појава реализује."
     },
 
 
@@ -1013,9 +1024,6 @@ const translations = {
         notFound:
             "Municipality not found.",
 
-        loading:
-            "Loading data...",
-
         loadError:
             "Data for this forecast time could not be loaded.",
 
@@ -1035,7 +1043,10 @@ const translations = {
             "Municipality found",
 
         shareTitle:
-            "Interactive Weather Risk Map"
+            "Interactive Weather Risk Map",
+
+        riskNote:
+            "Impacts and recommendations apply if the forecast event occurs."
     }
 
 };
@@ -1062,7 +1073,6 @@ L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
         maxZoom: 19,
-
         attribution:
             "&copy; OpenStreetMap contributors"
     }
@@ -1084,9 +1094,7 @@ function forecastFile(hour) {
 }
 
 
-function municipalityId(
-    properties
-) {
+function municipalityId(properties) {
 
     return String(
         properties.Municipality_DOM_ID
@@ -1103,7 +1111,9 @@ function getMunicipalityData(
     }
 
     const id =
-        municipalityId(properties);
+        municipalityId(
+            properties
+        );
 
     return (
         currentModelData
@@ -1138,9 +1148,7 @@ function municipalityName(
 }
 
 
-function formatProbability(
-    value
-) {
+function formatProbability(value) {
 
     if (
         value === null
@@ -1180,6 +1188,105 @@ function formatNumber(
 
 
 /* ============================================================
+   HAZARD INFO
+   ============================================================ */
+
+function currentHazardInfo() {
+
+    if (!hazardInfo) {
+        return null;
+    }
+
+    const hazard =
+        hazardInfo[
+            currentHazard
+        ];
+
+    if (!hazard) {
+        return null;
+    }
+
+    return (
+        hazard[
+            currentLanguage
+        ]
+        || null
+    );
+}
+
+
+function hazardInfoHtml() {
+
+    const info =
+        currentHazardInfo();
+
+    const t =
+        translations[
+            currentLanguage
+        ];
+
+    if (!info) {
+        return "";
+    }
+
+    const impacts =
+        Array.isArray(
+            info.impacts
+        )
+        ? info.impacts
+        : [];
+
+    const recommendations =
+        Array.isArray(
+            info.recommendations
+        )
+        ? info.recommendations
+        : [];
+
+    return `
+
+        <div class="popup-risk-box">
+
+            <div class="popup-section">
+                ${info.impact_title}
+            </div>
+
+            <ul>
+                ${
+                    impacts
+                    .map(
+                        item =>
+                            `<li>${item}</li>`
+                    )
+                    .join("")
+                }
+            </ul>
+
+            <div class="popup-section">
+                ${info.recommendation_title}
+            </div>
+
+            <ul>
+                ${
+                    recommendations
+                    .map(
+                        item =>
+                            `<li>${item}</li>`
+                    )
+                    .join("")
+                }
+            </ul>
+
+            <div class="popup-note">
+                ${t.riskNote}
+            </div>
+
+        </div>
+    `;
+}
+
+
+/* ============================================================
    DATE FORMAT
    ============================================================ */
 
@@ -1192,7 +1299,9 @@ function formatValidTime(
     }
 
     const date =
-        new Date(isoString);
+        new Date(
+            isoString
+        );
 
     if (
         currentLanguage === "sr"
@@ -1219,20 +1328,22 @@ function formatValidTime(
         );
     }
 
-    return date.toLocaleString(
-        "en-GB",
-        {
-            timeZone: "UTC",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
-        }
-    )
-    +
-    " UTC";
+    return (
+        date.toLocaleString(
+            "en-GB",
+            {
+                timeZone: "UTC",
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }
+        )
+        +
+        " UTC"
+    );
 }
 
 
@@ -1352,6 +1463,7 @@ function popupContent(
         </div>
 
         <div class="popup-valid">
+
             ${t.valid}:
             ${formatValidTime(
                 currentModelData.valid_time
@@ -1361,58 +1473,75 @@ function popupContent(
 
             ${t.lead}:
             +${currentModelData.forecast_hour} h
+
         </div>
 
 
         <div class="popup-row">
-            ⚡ ${t.thunder.replace("⚡ ","")}:
+
+            ⚡ ${
+                currentLanguage === "sr"
+                ? "Грмљавина"
+                : "Thunderstorm"
+            }:
+
             <b>
                 ${formatProbability(
                     data.thunder
                 )}
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             🧊 ${
                 currentLanguage === "sr"
                 ? "Ризик од града"
                 : "Hail risk"
             }:
+
             <b>
                 ${formatProbability(
                     data.hail
                 )}
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             🧊 ${
                 currentLanguage === "sr"
                 ? "Крупан град (≥ 2 cm)"
                 : "Large hail (≥ 2 cm)"
             }:
+
             <b>
                 ${formatProbability(
                     data.large_hail
                 )}
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             🧊 ${
                 currentLanguage === "sr"
                 ? "Веома крупан град (≥ 5 cm)"
                 : "Very large hail (≥ 5 cm)"
             }:
+
             <b>
                 ${formatProbability(
                     data.very_large_hail
                 )}
             </b>
+
         </div>
 
 
@@ -1422,7 +1551,9 @@ function popupContent(
 
 
         <div class="popup-row">
+
             ${t.instability}:
+
             <b>
                 ${formatNumber(
                     data.cape,
@@ -1430,11 +1561,14 @@ function popupContent(
                 )}
                 J/kg
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             ${t.shear}:
+
             <b>
                 ${formatNumber(
                     data.shear,
@@ -1442,26 +1576,36 @@ function popupContent(
                 )}
                 m/s
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             ${t.humidity}:
+
             <b>
                 ${formatNumber(
                     data.rh700,
                     0
                 )}%
             </b>
+
         </div>
 
 
         <div class="popup-row">
+
             ${t.grid}:
+
             <b>
                 ${data.grid_points ?? "—"}
             </b>
+
         </div>
+
+
+        ${hazardInfoHtml()}
 
     `;
 }
@@ -1491,7 +1635,9 @@ function resetHighlight(
     event
 ) {
 
-    if (geojsonLayer) {
+    if (
+        geojsonLayer
+    ) {
 
         geojsonLayer.resetStyle(
             event.target
@@ -1510,7 +1656,7 @@ function onEachFeature(
             feature.properties
         ),
         {
-            maxWidth: 360
+            maxWidth: 420
         }
     );
 
@@ -1585,25 +1731,28 @@ async function loadForecast(
 
         const response =
             await fetch(
-                forecastFile(hour),
+                forecastFile(
+                    hour
+                ),
                 {
-                    cache: "no-store"
+                    cache:
+                        "no-store"
                 }
             );
 
-
-        if (!response.ok) {
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
                 "HTTP "
-                + response.status
+                +
+                response.status
             );
         }
 
-
         const data =
             await response.json();
-
 
         currentModelData =
             data;
@@ -1614,14 +1763,12 @@ async function loadForecast(
         currentForecastHour =
             hour;
 
-
         document
             .getElementById(
                 "time-slider"
             )
             .value =
                 timeIndex;
-
 
         updateTimelineLabels();
 
@@ -1661,12 +1808,14 @@ async function loadForecast(
 
 
 /* ============================================================
-   MAP REDRAW
+   REDRAW
    ============================================================ */
 
 function redrawMap() {
 
-    if (!geojsonLayer) {
+    if (
+        !geojsonLayer
+    ) {
         return;
     }
 
@@ -1674,13 +1823,13 @@ function redrawMap() {
         styleFeature
     );
 
-
     geojsonLayer.eachLayer(
         layer => {
 
             if (
                 layer.feature
-                && layer.feature.properties
+                &&
+                layer.feature.properties
             ) {
 
                 layer.setPopupContent(
@@ -1702,11 +1851,11 @@ function restoreSelectedMunicipality() {
 
     if (
         !selectedMunicipalityId
-        || !geojsonLayer
+        ||
+        !geojsonLayer
     ) {
         return;
     }
-
 
     geojsonLayer.eachLayer(
         layer => {
@@ -1716,7 +1865,6 @@ function restoreSelectedMunicipality() {
                     layer.feature.properties
                 );
 
-
             if (
                 id ===
                 selectedMunicipalityId
@@ -1725,13 +1873,11 @@ function restoreSelectedMunicipality() {
                 selectedLayer =
                     layer;
 
-
                 layer.setPopupContent(
                     popupContent(
                         layer.feature.properties
                     )
                 );
-
 
                 if (
                     layer.isPopupOpen()
@@ -1746,34 +1892,77 @@ function restoreSelectedMunicipality() {
 
 
 /* ============================================================
-   LOAD GEOMETRY + FIRST FORECAST
+   INITIALIZE DATA
    ============================================================ */
 
 async function initializeData() {
 
     try {
 
+        /* ----------------------------------------------------
+           HAZARD INFO
+           ---------------------------------------------------- */
+
+        const hazardResponse =
+            await fetch(
+                HAZARD_INFO_FILE,
+                {
+                    cache:
+                        "no-store"
+                }
+            );
+
+        if (
+            !hazardResponse.ok
+        ) {
+
+            throw new Error(
+                "Hazard info HTTP "
+                +
+                hazardResponse.status
+            );
+        }
+
+        hazardInfo =
+            await hazardResponse.json();
+
+
+        /* ----------------------------------------------------
+           GEOMETRY
+           ---------------------------------------------------- */
+
         const response =
             await fetch(
                 GEOMETRY_FILE
             );
 
-
-        if (!response.ok) {
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
                 "Geometry HTTP "
-                + response.status
+                +
+                response.status
             );
         }
-
 
         geometryData =
             await response.json();
 
 
-        await loadForecast(0);
+        /* ----------------------------------------------------
+           FIRST FORECAST
+           ---------------------------------------------------- */
 
+        await loadForecast(
+            0
+        );
+
+
+        /* ----------------------------------------------------
+           MAP LAYER
+           ---------------------------------------------------- */
 
         geojsonLayer =
             L.geoJSON(
@@ -1786,7 +1975,9 @@ async function initializeData() {
                         onEachFeature
                 }
             )
-            .addTo(map);
+            .addTo(
+                map
+            );
 
 
         map.fitBounds(
@@ -1809,7 +2000,9 @@ async function initializeData() {
         );
 
         showStatus(
-            "Greška pri učitavanju podataka.",
+            currentLanguage === "sr"
+            ? "Грешка при учитавању података."
+            : "Error loading data.",
             8000
         );
     }
@@ -1822,7 +2015,9 @@ async function initializeData() {
 
 function updateTimelineLabels() {
 
-    if (!currentModelData) {
+    if (
+        !currentModelData
+    ) {
         return;
     }
 
@@ -1830,7 +2025,6 @@ function updateTimelineLabels() {
         translations[
             currentLanguage
         ];
-
 
     document
         .getElementById(
@@ -1841,21 +2035,23 @@ function updateTimelineLabels() {
                 currentModelData.valid_time
             );
 
-
     document
         .getElementById(
             "lead-time-label"
         )
         .textContent =
             t.lead
-            + ": +"
-            + currentModelData.forecast_hour
-            + " h";
+            +
+            ": +"
+            +
+            currentModelData.forecast_hour
+            +
+            " h";
 }
 
 
 /* ============================================================
-   TIMELINE BUTTONS
+   TIMELINE CONTROLS
    ============================================================ */
 
 function updateTimeButtons() {
@@ -1866,7 +2062,6 @@ function updateTimeButtons() {
         )
         .disabled =
             currentTimeIndex === 0;
-
 
     document
         .getElementById(
@@ -1943,7 +2138,9 @@ document
         "click",
         () => {
 
-            if (isPlaying) {
+            if (
+                isPlaying
+            ) {
 
                 stopPlay();
 
@@ -1957,11 +2154,14 @@ document
 
 function startPlay() {
 
-    if (isPlaying) {
+    if (
+        isPlaying
+    ) {
         return;
     }
 
-    isPlaying = true;
+    isPlaying =
+        true;
 
     document
         .getElementById(
@@ -1970,14 +2170,12 @@ function startPlay() {
         .textContent =
             "⏸";
 
-
     playTimer =
         setInterval(
             () => {
 
                 let next =
                     currentTimeIndex + 1;
-
 
                 if (
                     next >=
@@ -1986,7 +2184,6 @@ function startPlay() {
 
                     next = 0;
                 }
-
 
                 loadForecast(
                     next
@@ -2000,8 +2197,8 @@ function startPlay() {
 
 function stopPlay() {
 
-    isPlaying = false;
-
+    isPlaying =
+        false;
 
     document
         .getElementById(
@@ -2010,14 +2207,16 @@ function stopPlay() {
         .textContent =
             "▶";
 
-
-    if (playTimer) {
+    if (
+        playTimer
+    ) {
 
         clearInterval(
             playTimer
         );
 
-        playTimer = null;
+        playTimer =
+            null;
     }
 }
 
@@ -2040,7 +2239,6 @@ document
                     currentHazard =
                         this.dataset.layer;
 
-
                     document
                         .querySelectorAll(
                             ".layer-button"
@@ -2052,13 +2250,28 @@ document
                                 )
                         );
 
-
                     this.classList.add(
                         "active"
                     );
 
-
                     redrawMap();
+
+                    if (
+                        selectedLayer
+                    ) {
+
+                        selectedLayer
+                            .setPopupContent(
+                                popupContent(
+                                    selectedLayer
+                                    .feature
+                                    .properties
+                                )
+                            );
+
+                        selectedLayer
+                            .openPopup();
+                    }
                 }
             );
         }
@@ -2088,7 +2301,6 @@ function transliterateCyrillic(
 
     };
 
-
     return text
         .toLowerCase()
         .split("")
@@ -2104,32 +2316,51 @@ function normalizeSearch(
     text
 ) {
 
-    if (!text) {
+    if (
+        !text
+    ) {
         return "";
     }
-
 
     let value =
         transliterateCyrillic(
             text
         );
 
-
     value =
         value
-        .normalize("NFD")
+        .normalize(
+            "NFD"
+        )
         .replace(
             /[\u0300-\u036f]/g,
             ""
         )
-        .replace(/đ/g,"dj")
-        .replace(/č|ć/g,"c")
-        .replace(/š/g,"s")
-        .replace(/ž/g,"z")
-        .replace(/-grad/g,"")
-        .replace(/\s+/g," ")
+        .replace(
+            /đ/g,
+            "dj"
+        )
+        .replace(
+            /č|ć/g,
+            "c"
+        )
+        .replace(
+            /š/g,
+            "s"
+        )
+        .replace(
+            /ž/g,
+            "z"
+        )
+        .replace(
+            /-grad/g,
+            ""
+        )
+        .replace(
+            /\s+/g,
+            " "
+        )
         .trim();
-
 
     return value;
 }
@@ -2144,7 +2375,6 @@ const searchInput =
         "municipality-search"
     );
 
-
 const searchResults =
     document.getElementById(
         "search-results"
@@ -2155,26 +2385,26 @@ function findMunicipalities(
     query
 ) {
 
-    if (!geometryData) {
+    if (
+        !geometryData
+    ) {
         return [];
     }
-
 
     const q =
         normalizeSearch(
             query
         );
 
-
-    if (!q) {
+    if (
+        !q
+    ) {
         return [];
     }
-
 
     const exact = [];
     const starts = [];
     const contains = [];
-
 
     geometryData.features
         .forEach(
@@ -2183,22 +2413,23 @@ function findMunicipalities(
                 const p =
                     feature.properties;
 
-
                 const names =
                     [
                         p.Value_sc,
                         p.Value_sl,
                         p.Value_e
                     ]
-                    .filter(Boolean)
+                    .filter(
+                        Boolean
+                    )
                     .map(
                         normalizeSearch
                     );
 
-
                 if (
                     names.some(
-                        n => n === q
+                        n =>
+                            n === q
                     )
                 ) {
 
@@ -2206,9 +2437,7 @@ function findMunicipalities(
                         feature
                     );
 
-                }
-
-                else if (
+                } else if (
                     names.some(
                         n =>
                             n.startsWith(q)
@@ -2219,9 +2448,7 @@ function findMunicipalities(
                         feature
                     );
 
-                }
-
-                else if (
+                } else if (
                     names.some(
                         n =>
                             n.includes(q)
@@ -2234,7 +2461,6 @@ function findMunicipalities(
                 }
             }
         );
-
 
     return [
         ...exact,
@@ -2255,14 +2481,13 @@ function showSearchResults() {
             10
         );
 
-
     searchResults.innerHTML =
         "";
 
-
     if (
         !searchInput.value.trim()
-        || matches.length === 0
+        ||
+        matches.length === 0
     ) {
 
         searchResults.style.display =
@@ -2270,7 +2495,6 @@ function showSearchResults() {
 
         return;
     }
-
 
     matches.forEach(
         feature => {
@@ -2280,16 +2504,13 @@ function showSearchResults() {
                     "div"
                 );
 
-
             item.className =
                 "search-result";
-
 
             item.textContent =
                 municipalityName(
                     feature.properties
                 );
-
 
             item.addEventListener(
                 "click",
@@ -2298,12 +2519,10 @@ function showSearchResults() {
                     searchResults.style.display =
                         "none";
 
-
                     searchInput.value =
                         municipalityName(
                             feature.properties
                         );
-
 
                     openMunicipality(
                         feature
@@ -2311,13 +2530,11 @@ function showSearchResults() {
                 }
             );
 
-
             searchResults.appendChild(
                 item
             );
         }
     );
-
 
     searchResults.style.display =
         "block";
@@ -2330,7 +2547,6 @@ function performSearch() {
         findMunicipalities(
             searchInput.value
         );
-
 
     if (
         matches.length === 0
@@ -2345,10 +2561,8 @@ function performSearch() {
         return;
     }
 
-
     searchResults.style.display =
         "none";
-
 
     openMunicipality(
         matches[0]
@@ -2365,15 +2579,14 @@ function openMunicipality(
             feature.properties
         );
 
-
     selectedMunicipalityId =
         id;
 
-
-    if (!geojsonLayer) {
+    if (
+        !geojsonLayer
+    ) {
         return;
     }
-
 
     geojsonLayer.eachLayer(
         layer => {
@@ -2388,12 +2601,10 @@ function openMunicipality(
                 selectedLayer =
                     layer;
 
-
                 searchInput.value =
                     municipalityName(
                         layer.feature.properties
                     );
-
 
                 map.fitBounds(
                     layer.getBounds(),
@@ -2406,13 +2617,11 @@ function openMunicipality(
                     }
                 );
 
-
                 layer.setPopupContent(
                     popupContent(
                         layer.feature.properties
                     )
                 );
-
 
                 layer.openPopup();
             }
@@ -2432,7 +2641,8 @@ searchInput.addEventListener(
     event => {
 
         if (
-            event.key === "Enter"
+            event.key ===
+            "Enter"
         ) {
 
             performSearch();
@@ -2472,7 +2682,6 @@ function locateUser() {
             currentLanguage
         ];
 
-
     if (
         !navigator.geolocation
     ) {
@@ -2484,12 +2693,10 @@ function locateUser() {
         return;
     }
 
-
     showStatus(
         t.locationSearching,
         3000
     );
-
 
     navigator.geolocation
         .getCurrentPosition(
@@ -2502,7 +2709,6 @@ function locateUser() {
                 const lon =
                     position.coords.longitude;
 
-
                 if (
                     locationMarker
                 ) {
@@ -2512,23 +2718,21 @@ function locateUser() {
                     );
                 }
 
-
                 locationMarker =
                     L.marker(
                         [lat,lon]
                     )
-                    .addTo(map);
-
+                    .addTo(
+                        map
+                    );
 
                 const point =
                     turf.point(
                         [lon,lat]
                     );
 
-
                 let found =
                     null;
-
 
                 for (
                     const feature
@@ -2549,18 +2753,20 @@ function locateUser() {
                     }
                 }
 
-
-                if (found) {
+                if (
+                    found
+                ) {
 
                     openMunicipality(
                         found
                     );
 
-
                     showStatus(
                         t.municipalityLocated
-                        + ": "
-                        + municipalityName(
+                        +
+                        ": "
+                        +
+                        municipalityName(
                             found.properties
                         )
                     );
@@ -2585,9 +2791,7 @@ function locateUser() {
                         t.locationDenied
                     );
 
-                }
-
-                else if (
+                } else if (
                     error.code === 2
                 ) {
 
@@ -2595,9 +2799,7 @@ function locateUser() {
                         t.locationUnavailable
                     );
 
-                }
-
-                else {
+                } else {
 
                     showStatus(
                         t.locationTimeout
@@ -2654,10 +2856,8 @@ function shareData() {
             currentLanguage
         ];
 
-
     let text =
         t.title;
-
 
     if (
         currentModelData
@@ -2665,11 +2865,11 @@ function shareData() {
 
         text +=
             "\n"
-            + formatValidTime(
+            +
+            formatValidTime(
                 currentModelData.valid_time
             );
     }
-
 
     if (
         selectedLayer
@@ -2680,27 +2880,31 @@ function shareData() {
             .feature
             .properties;
 
-
         const data =
             getMunicipalityData(
                 properties
             );
 
-
-        if (data) {
+        if (
+            data
+        ) {
 
             text +=
                 "\n"
-                + municipalityName(
+                +
+                municipalityName(
                     properties
                 )
-                + ": "
-                + formatProbability(
-                    data[currentHazard]
+                +
+                ": "
+                +
+                formatProbability(
+                    data[
+                        currentHazard
+                    ]
                 );
         }
     }
-
 
     return {
 
@@ -2724,9 +2928,7 @@ async function nativeShare() {
             shareData()
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         if (
             error.name !==
@@ -2787,13 +2989,15 @@ document
             const d =
                 shareData();
 
-
             window.open(
                 "https://wa.me/?text="
-                + encodeURIComponent(
+                +
+                encodeURIComponent(
                     d.text
-                    + "\n"
-                    + d.url
+                    +
+                    "\n"
+                    +
+                    d.url
                 ),
                 "_blank"
             );
@@ -2812,13 +3016,15 @@ document
             const d =
                 shareData();
 
-
             window.location.href =
                 "viber://forward?text="
-                + encodeURIComponent(
+                +
+                encodeURIComponent(
                     d.text
-                    + "\n"
-                    + d.url
+                    +
+                    "\n"
+                    +
+                    d.url
                 );
         }
     );
@@ -2835,14 +3041,16 @@ document
             const d =
                 shareData();
 
-
             window.open(
                 "https://t.me/share/url?url="
-                + encodeURIComponent(
+                +
+                encodeURIComponent(
                     d.url
                 )
-                + "&text="
-                + encodeURIComponent(
+                +
+                "&text="
+                +
+                encodeURIComponent(
                     d.text
                 ),
                 "_blank"
@@ -2862,17 +3070,21 @@ document
             const d =
                 shareData();
 
-
             window.location.href =
                 "mailto:?subject="
-                + encodeURIComponent(
+                +
+                encodeURIComponent(
                     d.title
                 )
-                + "&body="
-                + encodeURIComponent(
+                +
+                "&body="
+                +
+                encodeURIComponent(
                     d.text
-                    + "\n\n"
-                    + d.url
+                    +
+                    "\n\n"
+                    +
+                    d.url
                 );
         }
     );
@@ -2889,7 +3101,6 @@ function updateHeader() {
             currentLanguage
         ];
 
-
     document
         .getElementById(
             "main-title"
@@ -2897,14 +3108,12 @@ function updateHeader() {
         .textContent =
             t.title;
 
-
     document
         .getElementById(
             "subtitle"
         )
         .textContent =
             t.model;
-
 
     if (
         currentModelData
@@ -2916,8 +3125,10 @@ function updateHeader() {
             )
             .textContent =
                 t.updated
-                + ": "
-                + formatValidTime(
+                +
+                ": "
+                +
+                formatValidTime(
                     currentModelData.model_run
                 );
     }
@@ -2935,14 +3146,11 @@ function updateLanguage() {
             currentLanguage
         ];
 
-
     document.documentElement.lang =
         currentLanguage;
 
-
     searchInput.placeholder =
         t.search;
-
 
     document
         .getElementById(
@@ -2951,14 +3159,12 @@ function updateLanguage() {
         .textContent =
             t.location;
 
-
     document
         .getElementById(
             "pdf-button"
         )
         .textContent =
             t.pdf;
-
 
     document
         .getElementById(
@@ -2967,14 +3173,12 @@ function updateLanguage() {
         .textContent =
             t.share;
 
-
     document
         .getElementById(
             "btn-thunder"
         )
         .textContent =
             t.thunder;
-
 
     document
         .getElementById(
@@ -2983,14 +3187,12 @@ function updateLanguage() {
         .textContent =
             t.hail;
 
-
     document
         .getElementById(
             "btn-large-hail"
         )
         .textContent =
             t.largeHail;
-
 
     document
         .getElementById(
@@ -2999,7 +3201,6 @@ function updateLanguage() {
         .textContent =
             t.veryLargeHail;
 
-
     document
         .getElementById(
             "disclaimer"
@@ -3007,10 +3208,8 @@ function updateLanguage() {
         .textContent =
             t.disclaimer;
 
-
     document.title =
         t.title;
-
 
     updateHeader();
 
@@ -3019,7 +3218,6 @@ function updateLanguage() {
     updateLegend();
 
     redrawMap();
-
 
     if (
         selectedLayer
@@ -3033,6 +3231,9 @@ function updateLanguage() {
                     .properties
                 )
             );
+
+        selectedLayer
+            .openPopup();
     }
 }
 
@@ -3051,7 +3252,6 @@ document
                     currentLanguage =
                         this.dataset.lang;
 
-
                     document
                         .querySelectorAll(
                             ".lang-button"
@@ -3063,11 +3263,9 @@ document
                                 )
                         );
 
-
                     this.classList.add(
                         "active"
                     );
-
 
                     updateLanguage();
                 }
@@ -3098,15 +3296,12 @@ function() {
             "legend"
         );
 
-
     div.id =
         "map-legend";
-
 
     updateLegend(
         div
     );
-
 
     return div;
 };
@@ -3123,17 +3318,16 @@ function updateLegend(
             "map-legend"
         );
 
-
-    if (!element) {
+    if (
+        !element
+    ) {
         return;
     }
-
 
     const t =
         translations[
             currentLanguage
         ];
-
 
     element.innerHTML = `
 
@@ -3180,6 +3374,7 @@ function updateLegend(
             </span>
             ≥ 50%
         </div>
+
     `;
 }
 
@@ -3193,7 +3388,8 @@ legend.addTo(
    STATUS
    ============================================================ */
 
-let statusTimeout = null;
+let statusTimeout =
+    null;
 
 
 function showStatus(
@@ -3206,7 +3402,6 @@ function showStatus(
             "status-message"
         );
 
-
     if (
         statusTimeout
     ) {
@@ -3216,14 +3411,11 @@ function showStatus(
         );
     }
 
-
     element.textContent =
         message;
 
-
     element.style.display =
         "block";
-
 
     statusTimeout =
         setTimeout(

@@ -1,0 +1,149 @@
+{
+  "thunder": {
+    "sr": {
+      "name": "Грмљавина",
+      "impact_title": "Могући утицаји у случају појаве",
+      "impacts": [
+        "Опасност од удара грома на отвореном простору.",
+        "Локално јак пљусак може краткотрајно смањити видљивост и отежати саобраћај.",
+        "Могући су краткотрајно појачан ветар и ломљење мањих грана.",
+        "Могући су локални прекиди активности на отвореном."
+      ],
+      "recommendation_title": "Препоруке",
+      "recommendations": [
+        "Током грмљавине избегавати отворене површине, узвишења и усамљена стабла.",
+        "Склонити се у чврст објекат или затворено возило.",
+        "Избегавати контакт са металним предметима и боравак у непосредној близини воде.",
+        "Пратити развој времена ако су планиране активности на отвореном."
+      ]
+    },
+    "en": {
+      "name": "Thunderstorm",
+      "impact_title": "Possible impacts if the event occurs",
+      "impacts": [
+        "Risk of lightning strikes in exposed outdoor areas.",
+        "Locally heavy showers may temporarily reduce visibility and disrupt traffic.",
+        "Short-lived strong wind gusts and minor branch damage are possible.",
+        "Outdoor activities may be locally disrupted."
+      ],
+      "recommendation_title": "Recommendations",
+      "recommendations": [
+        "During thunderstorms, avoid exposed areas, hilltops and isolated trees.",
+        "Seek shelter in a substantial building or enclosed vehicle.",
+        "Avoid contact with metal objects and stay away from open water.",
+        "Monitor weather developments when planning outdoor activities."
+      ]
+    }
+  },
+
+  "hail": {
+    "sr": {
+      "name": "Ризик од града",
+      "impact_title": "Могући утицаји у случају појаве",
+      "impacts": [
+        "Локална оштећења осетљивих пољопривредних култура, воћа и поврћа.",
+        "Могућа мања оштећења возила, пластеника и лакших материјала.",
+        "Краткотрајно отежани услови у саобраћају.",
+        "Могућност повређивања особа и животиња које се налазе на отвореном."
+      ],
+      "recommendation_title": "Препоруке",
+      "recommendations": [
+        "Уколико је могуће, склонити возила и осетљиву опрему у наткривен простор.",
+        "Не задржавати се на отвореном током појаве града.",
+        "Заштитити животиње и осетљиве пољопривредне објекте када за то постоји довољно времена.",
+        "У саобраћају смањити брзину и повећати одстојање."
+      ]
+    },
+    "en": {
+      "name": "Hail risk",
+      "impact_title": "Possible impacts if the event occurs",
+      "impacts": [
+        "Local damage to sensitive crops, fruit and vegetables.",
+        "Minor damage to vehicles, greenhouses and lightweight materials is possible.",
+        "Temporary disruption to road traffic.",
+        "People and animals outdoors may be at risk of injury."
+      ],
+      "recommendation_title": "Recommendations",
+      "recommendations": [
+        "If possible, move vehicles and sensitive equipment under cover.",
+        "Avoid remaining outdoors during hail.",
+        "Protect animals and vulnerable agricultural facilities when sufficient time is available.",
+        "Reduce speed and increase following distance while driving."
+      ]
+    }
+  },
+
+  "large_hail": {
+    "sr": {
+      "name": "Ризик од крупног града (≥ 2 cm)",
+      "impact_title": "Могући утицаји у случају појаве",
+      "impacts": [
+        "Значајна оштећења пољопривредних култура, воћњака и пластеника.",
+        "Могућа оштећења возила, кровова, прозора и спољне опреме.",
+        "Повећан ризик од повређивања људи и животиња на отвореном.",
+        "Могући локални проблеми у саобраћају и краткотрајна акумулација града на коловозу."
+      ],
+      "recommendation_title": "Препоруке",
+      "recommendations": [
+        "Склонити се у чврст објекат и не излазити током интензивне појаве.",
+        "Возила благовремено преместити у гаражу или наткривен простор ако је то могуће без излагања ризику.",
+        "Обезбедити или склонити лаке и осетљиве предмете на отвореном.",
+        "Пољопривредне и друге заштитне мере предузети унапред, а не у тренутку непосредне опасности."
+      ]
+    },
+    "en": {
+      "name": "Large hail risk (≥ 2 cm)",
+      "impact_title": "Possible impacts if the event occurs",
+      "impacts": [
+        "Significant damage to crops, orchards and greenhouses.",
+        "Damage to vehicles, roofs, windows and outdoor equipment is possible.",
+        "Increased risk of injury to people and animals outdoors.",
+        "Local traffic disruption and temporary hail accumulation on roads are possible."
+      ],
+      "recommendation_title": "Recommendations",
+      "recommendations": [
+        "Seek shelter in a substantial building and remain indoors during intense hail.",
+        "Move vehicles into a garage or covered area in advance where this can be done safely.",
+        "Secure or move lightweight and vulnerable outdoor items.",
+        "Agricultural and other protective measures should be taken in advance rather than during immediate danger."
+      ]
+    }
+  },
+
+  "very_large_hail": {
+    "sr": {
+      "name": "Ризик од веома крупног града (≥ 5 cm)",
+      "impact_title": "Могући утицаји у случају појаве",
+      "impacts": [
+        "Могућа веома велика штета на пољопривредним културама и воћњацима.",
+        "Могућа озбиљна оштећења возила, кровова, прозора, пластеника и друге изложене имовине.",
+        "Висок ризик од повређивања људи и животиња на отвореном.",
+        "Могуће значајно локално нарушавање безбедности саобраћаја."
+      ],
+      "recommendation_title": "Препоруке",
+      "recommendations": [
+        "Без одлагања потражити заклон у чврстом објекту.",
+        "Не покушавати заштиту возила или имовине ако је појава већ започела и тиме се излаже опасности.",
+        "Унапред склонити возила, животиње и осетљиву опрему када прогностички сигнал указује на повећан ризик.",
+        "Избегавати кретање на отвореном и одложити активности које нису неопходне током непосредне опасности."
+      ]
+    },
+    "en": {
+      "name": "Very large hail risk (≥ 5 cm)",
+      "impact_title": "Possible impacts if the event occurs",
+      "impacts": [
+        "Very severe damage to crops and orchards is possible.",
+        "Serious damage to vehicles, roofs, windows, greenhouses and other exposed property is possible.",
+        "High risk of injury to people and animals outdoors.",
+        "Significant local disruption to road safety is possible."
+      ],
+      "recommendation_title": "Recommendations",
+      "recommendations": [
+        "Seek shelter in a substantial building without delay.",
+        "Do not attempt to protect vehicles or property once hail has started if doing so would expose you to danger.",
+        "Move vehicles, animals and sensitive equipment to shelter in advance when forecasts indicate increased risk.",
+        "Avoid outdoor travel and postpone non-essential outdoor activities during immediate danger."
+      ]
+    }
+  }
+}
