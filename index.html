@@ -1237,6 +1237,12 @@ let overviewFeature = null;
 let overviewShowAll = false;
 let overviewSelectedDate = null;
 
+/* User-facing forecast cycle reference.
+   It is derived from the multimodel reference date and normalized to 00 UTC,
+   so valid times are shown as +003, +006, ... relative to that common cycle,
+   regardless of the underlying GEFS lead used internally. */
+let displayReferenceRun = null;
+
 
 /* ============================================================
    TRANSLATIONS
@@ -1580,6 +1586,82 @@ function forecastFile(hour) {
 }
 
 
+/* ============================================================
+   REAL-TIME START POSITION
+   ============================================================ */
+
+async function initialForecastIndexFromCurrentTime() {
+
+    let firstValidTime = null;
+
+    try {
+        const rowsByName = await loadMultimodelStormsRows(
+            FORECAST_HOURS[0]
+        );
+
+        if (rowsByName && rowsByName.size > 0) {
+            const firstRow = rowsByName.values().next().value;
+            const validText = firstRow ? firstRow.valid_time : null;
+            const parsed = validText ? new Date(validText) : null;
+
+            if (parsed && Number.isFinite(parsed.getTime())) {
+                firstValidTime = parsed;
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "Could not determine initial time from multimodel metadata.",
+            error
+        );
+    }
+
+    if (!firstValidTime) {
+        try {
+            const response = await fetch(
+                forecastFile(FORECAST_HOURS[0]),
+                { cache: "no-store" }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                const parsed = data.valid_time
+                    ? new Date(data.valid_time)
+                    : null;
+
+                if (parsed && Number.isFinite(parsed.getTime())) {
+                    firstValidTime = parsed;
+                }
+            }
+        } catch (error) {
+            console.warn(
+                "Could not determine initial time from GEFS metadata.",
+                error
+            );
+        }
+    }
+
+    if (!firstValidTime) {
+        return 0;
+    }
+
+    const now = new Date();
+    const stepMs = 3 * 60 * 60 * 1000;
+
+    const rawIndex = Math.ceil(
+        (now.getTime() - firstValidTime.getTime())
+        / stepMs
+    );
+
+    return Math.max(
+        0,
+        Math.min(
+            rawIndex,
+            FORECAST_HOURS.length - 1
+        )
+    );
+}
+
+
 function municipalityId(properties) {
 
     return String(
@@ -1693,6 +1775,47 @@ function translatedModelAvailability(sourceModels) {
     const text = String(sourceModels || "").trim();
     if (!text) return "—";
     return text;
+}
+
+
+function normalizeToUtcMidnight(dateValue) {
+    const date = new Date(dateValue);
+
+    if (!Number.isFinite(date.getTime())) {
+        return null;
+    }
+
+    return new Date(Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        0, 0, 0, 0
+    ));
+}
+
+function displayLeadHour(validTime) {
+    if (!displayReferenceRun || !validTime) {
+        return currentForecastHour;
+    }
+
+    const valid = new Date(validTime);
+
+    if (!Number.isFinite(valid.getTime())) {
+        return currentForecastHour;
+    }
+
+    return Math.round(
+        (valid.getTime() - displayReferenceRun.getTime())
+        / (60 * 60 * 1000)
+    );
+}
+
+function formatLeadHour(validTime) {
+    const hour = displayLeadHour(validTime);
+
+    return "+"
+        + String(Math.max(0, hour)).padStart(3, "0")
+        + " h";
 }
 
 
@@ -1877,6 +2000,16 @@ async function loadMultimodelStormsRows(hour) {
 
     const rows = parseCsv(await response.text());
     const byName = new Map();
+
+    if (!displayReferenceRun && rows.length > 0) {
+        const referenceText =
+            rows[0].reference_run
+            || rows[0].valid_time
+            || "";
+
+        displayReferenceRun =
+            normalizeToUtcMidnight(referenceText);
+    }
 
     rows.forEach(row => {
         byName.set(
@@ -2628,7 +2761,7 @@ function popupContent(
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
                 <br>
-                ${t.lead}: +${currentModelData.forecast_hour} h
+                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
             ${overallPopupHazardsHtml(data)}
@@ -2661,7 +2794,7 @@ function popupContent(
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
                 <br>
-                ${t.lead}: +${currentModelData.forecast_hour} h
+                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
             <div class="popup-section">${t.windGroup}</div>
@@ -2703,7 +2836,7 @@ function popupContent(
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
                 <br>
-                ${t.lead}: +${currentModelData.forecast_hour} h
+                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
             <div class="popup-section">${stormHazardLabel(currentHazard)}</div>
@@ -2731,7 +2864,7 @@ function popupContent(
         <div class="popup-valid">
             ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
             <br>
-            ${t.lead}: +${currentModelData.forecast_hour} h
+            ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
         </div>
 
         <div class="popup-section">${hazardLabels[currentHazard] || currentHazard}</div>
@@ -3160,11 +3293,14 @@ async function initializeData() {
 
 
         /* ----------------------------------------------------
-           FIRST FORECAST
+           INITIAL FORECAST - SYNCHRONIZED WITH REAL DATE/TIME
            ---------------------------------------------------- */
 
+        const initialTimeIndex =
+            await initialForecastIndexFromCurrentTime();
+
         await loadForecast(
-            0
+            initialTimeIndex
         );
 
 
@@ -3250,11 +3386,11 @@ function updateTimelineLabels() {
         .textContent =
             t.lead
             +
-            ": +"
+            ": "
             +
-            currentModelData.forecast_hour
-            +
-            " h";
+            formatLeadHour(
+                currentModelData.valid_time
+            );
 }
 
 
@@ -3947,10 +4083,36 @@ function renderOverview(forecasts, feature) {
     document.querySelectorAll("[data-overview-date]").forEach(button => {
         button.addEventListener("click", () => {
             overviewSelectedDate = button.dataset.overviewDate;
-            const firstForecastOfDay = forecasts.find(forecast => overviewDateKey(forecast.valid_time) === overviewSelectedDate);
-            if (firstForecastOfDay) {
-                const targetIndex = FORECAST_HOURS.indexOf(Number(firstForecastOfDay.forecast_hour));
-                if (targetIndex >= 0) { stopPlay(); loadForecast(targetIndex); }
+            const forecastsOfDay = forecasts.filter(
+                forecast =>
+                    overviewDateKey(forecast.valid_time)
+                    === overviewSelectedDate
+            );
+
+            if (forecastsOfDay.length > 0) {
+                const now = new Date();
+
+                const targetForecast =
+                    forecastsOfDay.find(
+                        forecast =>
+                            new Date(forecast.valid_time) >= now
+                    )
+                    || forecastsOfDay[0];
+
+                const targetTime =
+                    new Date(targetForecast.valid_time).getTime();
+
+                const targetIndex =
+                    forecasts.findIndex(
+                        forecast =>
+                            new Date(forecast.valid_time).getTime()
+                            === targetTime
+                    );
+
+                if (targetIndex >= 0) {
+                    stopPlay();
+                    loadForecast(targetIndex);
+                }
             }
             renderOverview(forecasts, feature);
         });
@@ -3971,7 +4133,11 @@ function renderOverview(forecasts, feature) {
 async function openFiveDayOverview(feature) {
 
     overviewFeature = feature;
-    overviewSelectedDate = null;
+
+    overviewSelectedDate =
+        currentModelData && currentModelData.valid_time
+        ? overviewDateKey(currentModelData.valid_time)
+        : null;
 
     const panel = document.getElementById("overview-panel");
     const body = document.getElementById("overview-body");
@@ -4901,7 +5067,8 @@ function updateHeader() {
                 ": "
                 +
                 formatValidTime(
-                    currentModelData.model_run
+                    displayReferenceRun
+                    || currentModelData.model_run
                 );
     }
 }
