@@ -2086,10 +2086,14 @@ function styleFeature(
         );
     } else if (
         currentHazard === "heat_stress"
-        && data
-        && data.heat_stress_multimodel
     ) {
-        fillColor = stormRiskColor(data.heat_stress_color);
+        fillColor =
+            (
+                data
+                && data.heat_stress_multimodel
+            )
+            ? stormRiskColor(data.heat_stress_color)
+            : "#c7c7c7";
     } else if (
         ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
         && data
@@ -4830,27 +4834,193 @@ async function loadProductMetadata() {
     }
 }
 
-function latestAvailableDataRun() {
-    if (productMetadata && productMetadata.last_successful_update_utc) {
-        const d = new Date(productMetadata.last_successful_update_utc);
-        if (Number.isFinite(d.getTime())) return d;
+let discoveredLatestProductRun = null;
+
+async function discoverLatestProductRun() {
+    const candidates = [];
+
+    if (
+        productMetadata
+        && productMetadata.last_successful_update_utc
+    ) {
+        const d = new Date(
+            productMetadata.last_successful_update_utc
+        );
+
+        if (Number.isFinite(d.getTime())) {
+            candidates.push(d);
+        }
     }
 
-    if (!currentModelData) return null;
+    /* Temperature daily CSV contains the actual model_run. */
+    try {
+        const response = await fetch(
+            "data/temperature/temperature_day0.csv",
+            { cache: "no-store" }
+        );
 
-    const candidates = [
-        currentModelData.temperature_model_run,
-        currentModelData.storm_reference_run,
-        currentModelData.model_run,
+        if (response.ok) {
+            const rows = parseCsv(
+                await response.text()
+            );
+
+            const runText =
+                rows.length
+                ? rows[0].model_run
+                : null;
+
+            const d =
+                runText
+                ? new Date(runText)
+                : null;
+
+            if (
+                d
+                && Number.isFinite(d.getTime())
+            ) {
+                candidates.push(d);
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "Temperature run could not be discovered.",
+            error
+        );
+    }
+
+    /* 24h thermal stress: f003 valid time minus 3 h = model run. */
+    try {
+        const response = await fetch(
+            "data/thermal_stress_24h/thermal_stress_f003.csv",
+            { cache: "no-store" }
+        );
+
+        if (response.ok) {
+            const rows = parseCsv(
+                await response.text()
+            );
+
+            if (
+                rows.length
+                && rows[0].valid_time
+            ) {
+                const valid =
+                    new Date(
+                        rows[0].valid_time
+                    );
+
+                if (
+                    Number.isFinite(
+                        valid.getTime()
+                    )
+                ) {
+                    candidates.push(
+                        new Date(
+                            valid.getTime()
+                            - 3 * 60 * 60 * 1000
+                        )
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "Thermal-stress run could not be discovered.",
+            error
+        );
+    }
+
+    if (candidates.length) {
+        discoveredLatestProductRun =
+            new Date(
+                Math.max(
+                    ...candidates.map(
+                        d => d.getTime()
+                    )
+                )
+            );
+    }
+
+    updateHeader();
+}
+
+function latestAvailableDataRun() {
+    const candidates = [];
+
+    if (
+        discoveredLatestProductRun
+        && Number.isFinite(
+            discoveredLatestProductRun.getTime()
+        )
+    ) {
+        candidates.push(
+            discoveredLatestProductRun
+        );
+    }
+
+    if (
+        productMetadata
+        && productMetadata.last_successful_update_utc
+    ) {
+        const d =
+            new Date(
+                productMetadata.last_successful_update_utc
+            );
+
+        if (Number.isFinite(d.getTime())) {
+            candidates.push(d);
+        }
+    }
+
+    if (currentModelData) {
+        [
+            currentModelData.temperature_model_run,
+            currentModelData.storm_reference_run,
+            currentModelData.model_run
+        ]
+        .filter(Boolean)
+        .forEach(value => {
+            const d = new Date(value);
+
+            if (Number.isFinite(d.getTime())) {
+                candidates.push(d);
+            }
+        });
+    }
+
+    if (
         displayReferenceRun
-    ].filter(Boolean).map(v => new Date(v)).filter(d => Number.isFinite(d.getTime()));
+        && Number.isFinite(
+            displayReferenceRun.getTime()
+        )
+    ) {
+        candidates.push(
+            displayReferenceRun
+        );
+    }
 
-    if (!candidates.length) return currentModelData.valid_time || null;
-    return new Date(Math.max(...candidates.map(d => d.getTime())));
+    if (candidates.length) {
+        return new Date(
+            Math.max(
+                ...candidates.map(
+                    d => d.getTime()
+                )
+            )
+        );
+    }
+
+    return (
+        currentModelData
+        ? currentModelData.valid_time
+        : null
+    );
 }
 
 
-loadProductMetadata();
+loadProductMetadata()
+    .finally(
+        discoverLatestProductRun
+    );
 
 /* ============================================================
    HEADER

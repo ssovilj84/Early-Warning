@@ -127,6 +127,7 @@ async function applyTemperatureOverlay(data) {
     }
 
     let matched = 0;
+    let availableMatched = 0;
 
     geometryData.features.forEach(feature => {
         const properties = feature.properties || {};
@@ -735,6 +736,7 @@ async function applyHeatStressTimelineOverlay(data) {
     }
 
     let matched = 0;
+    let availableMatched = 0;
 
     geometryData.features.forEach(feature => {
         const properties = feature.properties || {};
@@ -752,6 +754,26 @@ async function applyHeatStressTimelineOverlay(data) {
         if (!data.municipalities || !data.municipalities[id]) return;
 
         const target = data.municipalities[id];
+
+        /* Remove values inherited from the daily Heat Index overlay.
+           Otherwise the last incomplete night can retain an older
+           orange/red value even though the 24h product is unavailable. */
+        target.heat_stress = null;
+        target.heat_stress_gefs = null;
+        target.heat_stress_icon = null;
+        target.heat_stress_p_below_27 = null;
+        target.heat_stress_p_27_32 = null;
+        target.heat_stress_p_32_41 = null;
+        target.heat_stress_p_41_54 = null;
+        target.heat_stress_p_ge_54 = null;
+        target.heat_stress_night_tmin = null;
+        target.heat_stress_gefs_night_tmin = null;
+        target.heat_stress_icon_night_tmin = null;
+        target.heat_stress_p_tmin_lt20 = null;
+        target.heat_stress_p_tmin_20_22 = null;
+        target.heat_stress_p_tmin_22_24 = null;
+        target.heat_stress_p_tmin_24_26 = null;
+        target.heat_stress_p_tmin_ge26 = null;
 
         const color = String(
             row.thermal_stress_color || ""
@@ -849,10 +871,14 @@ async function applyHeatStressTimelineOverlay(data) {
             target.heat_stress_color;
 
         matched += 1;
+
+        if (!unavailable) {
+            availableMatched += 1;
+        }
     });
 
-    data.heat_stress_multimodel = matched > 0;
-    data.heat_stress_multimodel_matches = matched;
+    data.heat_stress_multimodel = availableMatched > 0;
+    data.heat_stress_multimodel_matches = availableMatched;
     data.heat_stress_timeline = matched > 0;
     data.heat_stress_forecast_hour = hour;
 
