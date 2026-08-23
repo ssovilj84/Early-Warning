@@ -49,6 +49,75 @@ let timelineSlotIndex = 0;
 let currentLanguage = "sr";
 let currentHazard = "overall_risk";
 
+/* Active top-level module when the user clicks OLUJA / VETAR / TEMPERATURA.
+   null means the central overall-risk view across all modules. */
+let currentModule = null;
+
+/* UI is not considered ready until forecast data and the map layer are both
+   initialized. This prevents false "unavailable" labels during first paint. */
+let appReady = false;
+
+/* ============================================================
+   CENTRAL HAZARD/MODULE REGISTRY
+   ------------------------------------------------------------
+   New modules should be added here once. The rest of the UI should read
+   module membership, availability and module-level risk from this registry.
+   Individual parameters remain selectable inside each module.
+   ============================================================ */
+const HAZARD_MODULES = {
+    storm: {
+        labelElementId: "storm-group-label",
+        parameters: ["thunder", "hail", "large_hail", "very_large_hail"],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.storms_available
+        ),
+        riskLevel: data => stormRiskLevel(data)
+    },
+
+    wind: {
+        labelElementId: "wind-group-label",
+        parameters: ["wind_risk_level", "wind_10", "wind_17", "wind_24", "wind_28"],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.wind_available
+        ),
+        riskLevel: data => windRiskLevel(data)
+    },
+
+    temperature: {
+        labelElementId: "temperature-group-label",
+        parameters: ["max_temperature", "heat_stress"],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.temperature_available
+        ),
+        riskLevel: data => Math.max(
+            temperatureRiskLevel(data),
+            heatStressRiskLevel(data)
+        )
+    }
+};
+
+function moduleForParameter(parameter) {
+    for (const [moduleKey, config] of Object.entries(HAZARD_MODULES)) {
+        if (config.parameters.includes(parameter)) {
+            return moduleKey;
+        }
+    }
+    return null;
+}
+
+function moduleRiskLevel(data, moduleKey) {
+    const config = HAZARD_MODULES[moduleKey];
+    return config ? config.riskLevel(data) : 0;
+}
+
+function moduleAvailable(moduleKey) {
+    const config = HAZARD_MODULES[moduleKey];
+    return Boolean(config && config.available());
+}
+
 let currentTimeIndex = 0;
 
 let currentForecastHour =
@@ -1058,46 +1127,23 @@ function startOfLocalToday() {
 
 
 function hazardAvailability() {
-    return {
-        storm:
-            Boolean(
-                currentModelData
-                && currentModelData.storms_available
-            ),
-
-        wind:
-            Boolean(
-                currentModelData
-                && currentModelData.wind_available
-            ),
-
-        temperature:
-            Boolean(
-                currentModelData
-                && currentModelData.temperature_available
-            )
-    };
+    return Object.fromEntries(
+        Object.keys(HAZARD_MODULES).map(
+            moduleKey => [
+                moduleKey,
+                moduleAvailable(moduleKey)
+            ]
+        )
+    );
 }
 
 
 function currentHazardGroup() {
-    if (
-        ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
-    ) {
-        return "storm";
+    if (currentHazard === "module_risk") {
+        return currentModule || "overall";
     }
 
-    if (
-        ["wind_risk_level", "wind_10", "wind_17", "wind_24", "wind_28"].includes(currentHazard)
-    ) {
-        return "wind";
-    }
-
-    if (["max_temperature", "heat_stress"].includes(currentHazard)) {
-        return "temperature";
-    }
-
-    return "overall";
+    return moduleForParameter(currentHazard) || "overall";
 }
 
 
@@ -1106,11 +1152,7 @@ function currentHazardAvailable() {
     const available = hazardAvailability();
 
     if (group === "overall") {
-        return (
-            available.storm
-            || available.wind
-            || available.temperature
-        );
+        return Object.values(available).some(Boolean);
     }
 
     return Boolean(available[group]);
@@ -1133,21 +1175,39 @@ function unavailableHtml(name) {
 
 function updateHazardAvailabilityLabels() {
     const t = translations[currentLanguage];
-    const a = hazardAvailability();
 
-    const status = available =>
-        available
-        ? ""
-        : " — " + t.unavailable;
+    const moduleLabels = {
+        storm: t.stormGroup,
+        wind: t.windGroup,
+        temperature: t.temperatureGroup
+    };
 
-    document.getElementById("storm-group-label").textContent =
-        t.stormGroup + status(a.storm);
+    Object.entries(HAZARD_MODULES).forEach(
+        ([moduleKey, config]) => {
+            const element =
+                document.getElementById(
+                    config.labelElementId
+                );
 
-    document.getElementById("wind-group-label").textContent =
-        t.windGroup + status(a.wind);
+            if (!element) return;
 
-    document.getElementById("temperature-group-label").textContent =
-        t.temperatureGroup + status(a.temperature);
+            /* Do not claim "unavailable" before initialization has completed. */
+            if (!appReady) {
+                element.textContent =
+                    moduleLabels[moduleKey];
+                return;
+            }
+
+            element.textContent =
+                moduleLabels[moduleKey]
+                +
+                (
+                    moduleAvailable(moduleKey)
+                    ? ""
+                    : " — " + t.unavailable
+                );
+        }
+    );
 }
 
 
@@ -1316,12 +1376,12 @@ async function buildTimelineSlots() {
 }
 
 
-async function showTimelineSlot(index) {
+async function dataForTimelineSlot(index) {
     if (!timelineSlots.length) {
-        return;
+        return null;
     }
 
-    timelineSlotIndex =
+    const safeIndex =
         Math.max(
             0,
             Math.min(
@@ -1331,7 +1391,7 @@ async function showTimelineSlot(index) {
         );
 
     const slot =
-        timelineSlots[timelineSlotIndex];
+        timelineSlots[safeIndex];
 
     let data;
 
@@ -1352,22 +1412,25 @@ async function showTimelineSlot(index) {
                 && data.storms_multimodel_matches > 0
             );
 
-        /* The five-day cache carries daily Heat Index values.
-           For the interactive timeline, replace them with the exact 3-hour slot. */
+        /* Daily Tmax and exact 3-hour thermal stress are attached using
+           the same overlay logic as the main map. */
+        await applyTemperatureOverlay(data);
         await applyHeatStressTimelineOverlay(data);
 
         data.temperature_available =
             Boolean(
-                (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
-                || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
+                (
+                    data.temperature_multimodel
+                    && data.temperature_multimodel_matches > 0
+                )
+                ||
+                (
+                    data.heat_stress_multimodel
+                    && data.heat_stress_multimodel_matches > 0
+                )
             );
 
     } else {
-        /*
-           No sub-daily model product exists at this exact time.
-           Keep the time slot, mark storm/wind unavailable, and attach the
-           daily Tmax product when its local calendar date is available.
-        */
         data = {
             valid_time: slot.valid_time,
             model_run: null,
@@ -1381,24 +1444,75 @@ async function showTimelineSlot(index) {
             heat_stress_multimodel: false
         };
 
-        await applyTemperatureOverlay(
-            data
-        );
-
+        await applyTemperatureOverlay(data);
         await applyHeatStressTimelineOverlay(data);
 
         data.temperature_available =
             Boolean(
-                (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
-                || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
+                (
+                    data.temperature_multimodel
+                    && data.temperature_multimodel_matches > 0
+                )
+                ||
+                (
+                    data.heat_stress_multimodel
+                    && data.heat_stress_multimodel_matches > 0
+                )
             );
     }
 
-    /* Never interpret missing storm data as the older GEFS storm signal.
-       The final storm product is available only where the multimodel
-       STORMS file exists for the selected valid time. */
     if (!data.storms_available) {
         data.storms_multimodel = false;
+    }
+
+    /* The timeline is authoritative. Never leave an inherited stale valid time. */
+    data.valid_time = slot.valid_time;
+
+    return data;
+}
+
+
+async function buildTimelineOverviewData() {
+    const results = [];
+
+    for (
+        let index = 0;
+        index < timelineSlots.length;
+        index += 1
+    ) {
+        const data =
+            await dataForTimelineSlot(index);
+
+        if (data) {
+            results.push(data);
+        }
+    }
+
+    return results;
+}
+
+
+async function showTimelineSlot(index) {
+    if (!timelineSlots.length) {
+        return;
+    }
+
+    timelineSlotIndex =
+        Math.max(
+            0,
+            Math.min(
+                index,
+                timelineSlots.length - 1
+            )
+        );
+
+    const data =
+        await dataForTimelineSlot(
+            timelineSlotIndex
+        );
+
+    if (!data) {
+        return;
     }
 
     currentModelData = data;
@@ -1423,8 +1537,27 @@ async function showTimelineSlot(index) {
             selectedLayer.feature.properties
         );
     }
-}
 
+    /* If the municipality overview is open, keep it synchronized with the
+       same moving timeline without requiring a new search/click. */
+    if (
+        overviewFeature
+        && document.getElementById("overview-panel").classList.contains("open")
+    ) {
+        overviewSelectedDate =
+            localDateKeyBelgrade(
+                currentModelData.valid_time
+            );
+
+        const overviewData =
+            await buildTimelineOverviewData();
+
+        renderOverview(
+            overviewData,
+            overviewFeature
+        );
+    }
+}
 
 
 
@@ -1774,6 +1907,91 @@ function overallPopupHazardsHtml(data) {
     }
 
 
+
+    /* --------------------------------------------------------
+       24H HEAT STRESS: mirror the main heat-stress product in
+       the combined municipality popup. Show only yellow-or-higher.
+       -------------------------------------------------------- */
+
+    if (
+        data.heat_stress_multimodel
+        &&
+        stormColorLevelNumber(data.heat_stress_color) >= 1
+    ) {
+        significantCount += 1;
+
+        const heatMode =
+            String(data.heat_stress_mode || "").toUpperCase();
+
+        const heatImpact =
+            typeof thermalStressImpactRecommendation === "function"
+            ? thermalStressImpactRecommendation(data)
+            : null;
+
+        html += `
+            <div class="popup-section">${t.heatStress}</div>
+
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Режим" : "Mode"}:
+                <b>${
+                    typeof thermalStressModeTranslation === "function"
+                    ? thermalStressModeTranslation(heatMode)
+                    : (heatMode || "—")
+                }</b>
+            </div>
+
+            <div class="popup-row">
+                ${t.temperatureCategory}:
+                <b>${
+                    typeof translatedHeatStressCategory === "function"
+                    ? translatedHeatStressCategory(data)
+                    : (data.heat_stress_category_sr || "—")
+                }</b>
+            </div>
+
+            ${
+                (heatMode === "DAY" || heatMode === "TRANSITION")
+                && Number.isFinite(Number(data.heat_stress))
+                ? `
+                    <div class="popup-row">
+                        Heat Index:
+                        <b>${formatNumber(data.heat_stress, 1)} °C</b>
+                    </div>
+                `
+                : ""
+            }
+
+            ${
+                (heatMode === "NIGHT" || heatMode === "TRANSITION")
+                && Number.isFinite(Number(data.heat_stress_night_tmin))
+                ? `
+                    <div class="popup-row">
+                        ${currentLanguage === "sr" ? "Ноћни минимум" : "Overnight minimum"}:
+                        <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b>
+                    </div>
+                `
+                : ""
+            }
+
+            ${
+                heatImpact
+                ? `
+                    <div class="popup-risk-box">
+                        <div class="popup-section">${t.impacts}</div>
+                        <div>${heatImpact.impact}</div>
+
+                        <div class="popup-section">${t.recommendations}</div>
+                        <div>${heatImpact.recommendation}</div>
+
+                        <div class="popup-note">${t.riskNote}</div>
+                    </div>
+                `
+                : ""
+            }
+        `;
+    }
+
+
     /* --------------------------------------------------------
        WIND: show the group only when final wind risk is yellow
        or higher. Inside it, show only wind thresholds that have
@@ -2056,17 +2274,25 @@ function styleFeature(
 
     } else if (currentHazard === "overall_risk") {
         fillColor =
-            (
-                available.storm
-                || available.wind
-                || available.temperature
-            )
+            Object.values(available).some(Boolean)
             ? (
                 data
                 ? overallRiskColor(overallRiskLevel(data))
                 : "#cccccc"
             )
             : "#c7c7c7";
+
+    } else if (currentHazard === "module_risk") {
+        fillColor =
+            data
+            ? overallRiskColor(
+                moduleRiskLevel(
+                    data,
+                    currentModule
+                )
+            )
+            : "#cccccc";
+
     } else if (currentHazard === "wind_risk_level") {
         const windRiskColors = {green:"#a6d96a", yellow:"#ffffbf", orange:"#fdae61", red:"#d7191c"};
         fillColor = windRiskColors[String(value || "green").toLowerCase()] || "#cccccc";
@@ -2127,6 +2353,86 @@ function styleFeature(
    POPUP
    ============================================================ */
 
+
+function modulePopupContent(data, name, moduleKey) {
+    const t = translations[currentLanguage];
+
+    const header = `
+        <div class="popup-title">${name}</div>
+        <div class="popup-valid">
+            ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
+            <br>
+            ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
+        </div>
+    `;
+
+    if (moduleKey === "temperature") {
+        const tmaxBlock =
+            data.temperature_multimodel
+            ? temperatureDetailHtml(data)
+            : "";
+
+        const stressBlock =
+            data.heat_stress_multimodel
+            ? heatStressDetailHtml(data)
+            : "";
+
+        return header + `
+            <div class="popup-section">${t.temperatureGroup}</div>
+            ${tmaxBlock}
+            ${stressBlock}
+        `;
+    }
+
+    if (moduleKey === "wind") {
+        return header + `
+            <div class="popup-section">${t.windGroup}</div>
+            <div class="popup-row">
+                ${currentLanguage === "sr" ? "Коначни ниво модула" : "Final module level"}:
+                <b>${currentLanguage === "sr"
+                    ? ({green:"без значајног ризика", yellow:"низак", orange:"умерен", red:"висок", purple:"веома висок"}[
+                        String(data.wind_risk_level || "green").toLowerCase()
+                    ] || data.wind_risk_level || "—")
+                    : String(data.wind_risk_level || "green")}</b>
+            </div>
+            <div class="popup-row">${t.wind10}: <b>${formatProbability(data.wind_10)}</b></div>
+            <div class="popup-row">${t.wind17}: <b>${formatProbability(data.wind_17)}</b></div>
+            <div class="popup-row">${t.wind24}: <b>${formatProbability(data.wind_24)}</b></div>
+            <div class="popup-row">${t.wind28}: <b>${formatProbability(data.wind_28)}</b></div>
+        `;
+    }
+
+    if (moduleKey === "storm") {
+        const keys = HAZARD_MODULES.storm.parameters;
+
+        const rows = keys.map(hazardKey => {
+            const prefix = stormHazardPrefix(hazardKey);
+            const color =
+                data.storms_multimodel
+                ? data[prefix + "_risk_color"]
+                : null;
+
+            return `
+                <div class="popup-row">
+                    ${stormHazardLabel(hazardKey)}:
+                    <b>${formatProbability(data[hazardKey])}</b>
+                    ${color
+                        ? ` — ${translatedStormRiskColor(color)}`
+                        : ""}
+                </div>
+            `;
+        }).join("");
+
+        return header + `
+            <div class="popup-section">${t.stormGroup}</div>
+            ${rows}
+        `;
+    }
+
+    return header;
+}
+
+
 function popupContent(
     properties
 ) {
@@ -2167,6 +2473,15 @@ function popupContent(
             ${overallPopupHazardsHtml(data)}
         `;
     }
+
+    if (currentHazard === "module_risk") {
+        return modulePopupContent(
+            data,
+            name,
+            currentModule
+        );
+    }
+
 
     /* ========================================================
        DETAIL MODE - WIND
@@ -2789,6 +3104,16 @@ async function initializeData() {
             }
         );
 
+        /* First paint is complete only now: data + geometry + map layer.
+           Refresh availability labels and map once more to avoid false
+           "all unavailable" state on initial page load. */
+        appReady = true;
+        updateHazardAvailabilityLabels();
+        updateHeader();
+        updateLegend();
+        redrawMap();
+        restoreSelectedMunicipality();
+
 
         redrawMap();
 
@@ -3012,6 +3337,11 @@ document
                     currentHazard =
                         this.dataset.layer;
 
+                    currentModule =
+                        moduleForParameter(
+                            currentHazard
+                        );
+
                     document
                         .querySelectorAll(
                             ".layer-button"
@@ -3057,21 +3387,58 @@ const stormGroupButton =
 const stormSubcontrols =
     document.getElementById("storm-subcontrols");
 
-function setOverallRiskView() {
-    currentHazard = "overall_risk";
-    document.querySelectorAll(".layer-button").forEach(btn => btn.classList.remove("active"));
-    redrawMap();
-    updateLegend();
+function refreshSelectedMunicipalityPopup() {
+    if (!selectedLayer) return;
 
-    if (selectedLayer) {
-        const properties = selectedLayer.feature.properties;
-        if (isMobileView() && document.getElementById("mobile-detail-panel").classList.contains("open")) {
-            openMobileDetail(properties);
-        } else {
-            selectedLayer.setPopupContent(popupContent(properties));
-        }
+    const properties =
+        selectedLayer.feature.properties;
+
+    if (
+        isMobileView()
+        && document
+            .getElementById("mobile-detail-panel")
+            .classList.contains("open")
+    ) {
+        openMobileDetail(properties);
+    } else {
+        selectedLayer.setPopupContent(
+            popupContent(properties)
+        );
     }
 }
+
+
+function setOverallRiskView() {
+    currentModule = null;
+    currentHazard = "overall_risk";
+
+    document
+        .querySelectorAll(".layer-button")
+        .forEach(
+            btn => btn.classList.remove("active")
+        );
+
+    redrawMap();
+    updateLegend();
+    refreshSelectedMunicipalityPopup();
+}
+
+
+function setModuleRiskView(group) {
+    currentModule = group;
+    currentHazard = "module_risk";
+
+    document
+        .querySelectorAll(".layer-button")
+        .forEach(
+            btn => btn.classList.remove("active")
+        );
+
+    redrawMap();
+    updateLegend();
+    refreshSelectedMunicipalityPopup();
+}
+
 
 function openHazardGroup(group) {
     const stormOpen = group === "storm";
@@ -3087,9 +3454,10 @@ function openHazardGroup(group) {
     temperatureSubcontrols.classList.toggle("open", temperatureOpen);
     temperatureGroupButton.classList.toggle("open", temperatureOpen);
 
-    // Opening a group is navigation only. Until a sub-parameter is chosen,
-    // keep the central map on the combined strongest-risk view.
-    setOverallRiskView();
+    /* Architectural rule:
+       clicking the module shows the strongest risk INSIDE that module.
+       Clicking a sub-parameter then shows only that parameter. */
+    setModuleRiskView(group);
     updateHazardAvailabilityLabels();
 }
 
@@ -3139,6 +3507,7 @@ if (temperatureSubcontrols && !document.getElementById("btn-heat-stress")) {
     temperatureSubcontrols.appendChild(heatButton);
     heatButton.addEventListener("click", function() {
         currentHazard = this.dataset.layer;
+        currentModule = moduleForParameter(currentHazard);
         document.querySelectorAll(".layer-button").forEach(btn => btn.classList.remove("active"));
         this.classList.add("active");
         updateHazardAvailabilityLabels();
@@ -3472,6 +3841,15 @@ function overviewDayRisk(forecasts, municipalityID, dateKey) {
                 )
             );
         }
+
+        if (municipality.heat_stress_multimodel) {
+            strongest = Math.max(
+                strongest,
+                stormColorLevelNumber(
+                    municipality.heat_stress_color
+                )
+            );
+        }
     });
 
     return strongest;
@@ -3504,22 +3882,91 @@ function monthCalendarHtml(year, month, activeDates, forecasts, municipalityID) 
 }
 
 function overviewCalendarsHtml(forecasts, municipalityID) {
-    const activeDates = new Set(
-        forecasts.map(
-            f => localDateKeyBelgrade(f.valid_time)
-        )
-    );
+    if (!timelineSlots.length) {
+        return "";
+    }
 
-    const firstForecastDate = new Date(
-        forecasts[0].valid_time
-    );
-    const y1 = firstForecastDate.getUTCFullYear();
-    const m1 = firstForecastDate.getUTCMonth();
-    const second = new Date(Date.UTC(y1, m1 + 1, 1));
-    const t = translations[currentLanguage];
-    const legendClasses = ["risk-green", "risk-yellow", "risk-orange", "risk-red", "risk-purple"];
-    const legend = t.riskLevels.map((label, i) => `<span><i class="overview-calendar-dot ${legendClasses[i]}" style="border-color:${["#78b943","#d9cf35","#ed8d35","#d7191c","#7b3294"][i]}"></i>${label}</span>`).join("");
-    return `<div class="overview-calendars">${monthCalendarHtml(y1,m1,activeDates,forecasts,municipalityID)}${monthCalendarHtml(second.getUTCFullYear(),second.getUTCMonth(),activeDates,forecasts,municipalityID)}</div><div class="overview-calendar-legend">${legend}</div>`;
+    /* The calendar is a projection of the SAME timeline shown under the map.
+       Therefore every local date represented by timelineSlots is active,
+       regardless of which individual hazard has data on that date. */
+    const activeDates =
+        new Set(
+            timelineSlots.map(
+                slot =>
+                    localDateKeyBelgrade(
+                        slot.valid_time
+                    )
+            )
+        );
+
+    const firstActiveDate =
+        Array.from(activeDates)
+            .sort()[0];
+
+    if (!firstActiveDate) {
+        return "";
+    }
+
+    const firstForecastDate =
+        new Date(
+            firstActiveDate
+            + "T00:00:00Z"
+        );
+
+    const y1 =
+        firstForecastDate.getUTCFullYear();
+
+    const m1 =
+        firstForecastDate.getUTCMonth();
+
+    const second =
+        new Date(
+            Date.UTC(
+                y1,
+                m1 + 1,
+                1
+            )
+        );
+
+    const t =
+        translations[currentLanguage];
+
+    const legendClasses =
+        [
+            "risk-green",
+            "risk-yellow",
+            "risk-orange",
+            "risk-red",
+            "risk-purple"
+        ];
+
+    const legend =
+        t.riskLevels.map(
+            (label, i) =>
+                `<span><i class="overview-calendar-dot ${legendClasses[i]}" style="border-color:${["#78b943","#d9cf35","#ed8d35","#d7191c","#7b3294"][i]}"></i>${label}</span>`
+        ).join("");
+
+    return `
+        <div class="overview-calendars">
+            ${monthCalendarHtml(
+                y1,
+                m1,
+                activeDates,
+                forecasts,
+                municipalityID
+            )}
+            ${monthCalendarHtml(
+                second.getUTCFullYear(),
+                second.getUTCMonth(),
+                activeDates,
+                forecasts,
+                municipalityID
+            )}
+        </div>
+        <div class="overview-calendar-legend">
+            ${legend}
+        </div>
+    `;
 }
 
 function formatOverviewDateKey(dateKey) {
@@ -3528,11 +3975,244 @@ function formatOverviewDateKey(dateKey) {
 }
 
 
+function heatStressOverviewItemHtml(
+    forecasts,
+    municipalityID
+) {
+    const t = translations[currentLanguage];
+
+    const slots = forecasts
+        .filter(forecast => {
+            if (
+                overviewSelectedDate
+                &&
+                localDateKeyBelgrade(forecast.valid_time)
+                !== overviewSelectedDate
+            ) {
+                return false;
+            }
+
+            const municipality =
+                forecast.municipalities[municipalityID];
+
+            return Boolean(
+                municipality
+                && municipality.heat_stress_multimodel
+            );
+        })
+        .map(forecast => ({
+            forecast,
+            data: forecast.municipalities[municipalityID],
+            level: stormColorLevelNumber(
+                forecast.municipalities[municipalityID]
+                    .heat_stress_color
+            )
+        }))
+        .sort(
+            (a, b) =>
+                new Date(a.forecast.valid_time)
+                -
+                new Date(b.forecast.valid_time)
+        );
+
+    if (!slots.length) return "";
+
+    const significant =
+        slots.filter(item => item.level >= 1);
+
+    if (!significant.length && !overviewShowAll) {
+        return "";
+    }
+
+    if (!significant.length) {
+        return `
+            <div class="overview-risk">
+                <div class="overview-risk-name">
+                    ${t.heatStress}
+                </div>
+                <div class="overview-muted">
+                    ${t.noSignificantSignal}
+                </div>
+            </div>
+        `;
+    }
+
+    const windows = [];
+    let current = {
+        start: significant[0].forecast.valid_time,
+        end: significant[0].forecast.valid_time,
+        strongest: significant[0]
+    };
+
+    for (let i = 1; i < significant.length; i++) {
+        const previousTime =
+            new Date(
+                significant[i - 1].forecast.valid_time
+            ).getTime();
+
+        const currentTime =
+            new Date(
+                significant[i].forecast.valid_time
+            ).getTime();
+
+        const consecutive =
+            currentTime - previousTime
+            === 3 * 60 * 60 * 1000;
+
+        if (consecutive) {
+            current.end =
+                significant[i].forecast.valid_time;
+
+            if (
+                significant[i].level
+                >
+                current.strongest.level
+            ) {
+                current.strongest = significant[i];
+            }
+        } else {
+            windows.push(current);
+            current = {
+                start: significant[i].forecast.valid_time,
+                end: significant[i].forecast.valid_time,
+                strongest: significant[i]
+            };
+        }
+    }
+
+    windows.push(current);
+
+    const periodsHtml =
+        windows.map(window => {
+            const data =
+                window.strongest.data;
+
+            const category =
+                typeof translatedHeatStressCategory === "function"
+                ? translatedHeatStressCategory(data)
+                : (data.heat_stress_category_sr || "—");
+
+            return `
+                <div class="overview-period">
+                    ${formatOverviewInterval(
+                        window.start,
+                        window.end
+                    )}
+                    — <b>${category}</b>
+                </div>
+            `;
+        }).join("");
+
+    let detailHtml = "";
+
+    if (overviewSelectedDate) {
+        const strongest =
+            significant.reduce(
+                (best, item) =>
+                    !best || item.level > best.level
+                    ? item
+                    : best,
+                null
+            );
+
+        if (strongest) {
+            const data = strongest.data;
+            const mode =
+                String(
+                    data.heat_stress_mode || ""
+                ).toUpperCase();
+
+            const impact =
+                typeof thermalStressImpactRecommendation
+                === "function"
+                ? thermalStressImpactRecommendation(data)
+                : null;
+
+            let valueHtml = "";
+
+            if (
+                (mode === "DAY" || mode === "TRANSITION")
+                &&
+                Number.isFinite(Number(data.heat_stress))
+            ) {
+                valueHtml += `
+                    <div class="overview-period">
+                        Heat Index:
+                        <b>${formatNumber(
+                            data.heat_stress,
+                            1
+                        )} °C</b>
+                    </div>
+                `;
+            }
+
+            if (
+                (mode === "NIGHT" || mode === "TRANSITION")
+                &&
+                Number.isFinite(
+                    Number(data.heat_stress_night_tmin)
+                )
+            ) {
+                valueHtml += `
+                    <div class="overview-period">
+                        ${
+                            currentLanguage === "sr"
+                            ? "Ноћни минимум"
+                            : "Overnight minimum"
+                        }:
+                        <b>${formatNumber(
+                            data.heat_stress_night_tmin,
+                            1
+                        )} °C</b>
+                    </div>
+                `;
+            }
+
+            detailHtml = `
+                ${valueHtml}
+
+                ${
+                    impact
+                    ? `
+                        <div class="overview-muted" style="margin-top:7px;">
+                            <b>${t.impacts}:</b>
+                            ${impact.impact}
+                        </div>
+
+                        <div class="overview-muted" style="margin-top:5px;">
+                            <b>${t.recommendations}:</b>
+                            ${impact.recommendation}
+                        </div>
+                    `
+                    : ""
+                }
+            `;
+        }
+    }
+
+    return `
+        <div class="overview-risk">
+            <div class="overview-risk-name">
+                ${t.heatStress}
+            </div>
+            ${periodsHtml}
+            ${detailHtml}
+        </div>
+    `;
+}
+
+
 function temperatureOverviewGroupHtml(
     forecasts,
     municipalityID
 ) {
     const t = translations[currentLanguage];
+
+    const heatStressHtml =
+        heatStressOverviewItemHtml(
+            forecasts,
+            municipalityID
+        );
 
     const byDate = new Map();
 
@@ -3574,7 +4254,7 @@ function temperatureOverviewGroupHtml(
             || dateKey === overviewSelectedDate
         );
 
-    if (!dates.length) {
+    if (!dates.length && !heatStressHtml) {
         return `
             <div class="overview-group">
                 <div class="overview-group-title">
@@ -3656,6 +4336,7 @@ function temperatureOverviewGroupHtml(
                 ${t.temperatureGroup}
             </div>
             ${items}
+            ${heatStressHtml}
         </div>
     `;
 }
@@ -3769,20 +4450,38 @@ function windOverviewImpactHtml(
    - impacts
    - recommendations
    The search/calendar overview and map popup should use the same fields.
+
+   FUTURE RULE:
+   a new hazard should expose one shared set of municipality fields
+   and one overview adapter/renderer. The main map and the municipality
+   search/calendar must read those same fields, so meteorological logic
+   is never duplicated in two different UI paths.
+
+   TEMPERATURE is the first synchronized implementation:
+   Tmax + 24h heat stress feed both the main view and municipality
+   calendar/overview from the same data fields.
 */
 
 function renderOverview(forecasts, feature) {
 
     const t = translations[currentLanguage];
     const municipalityID = municipalityId(feature.properties);
-    const displayedForecasts = overviewSelectedDate
-        ? forecasts.filter(
+
+    /* The overview receives data already projected onto timelineSlots.
+       This guarantees that map, slider, calendar and municipality details
+       all refer to the same valid times. */
+    const visibleForecasts =
+        forecasts;
+
+    const displayedForecasts =
+        overviewSelectedDate
+        ? visibleForecasts.filter(
             forecast =>
                 localDateKeyBelgrade(
                     forecast.valid_time
                 ) === overviewSelectedDate
         )
-        : forecasts;
+        : visibleForecasts;
 
     function buildGroupHtml(title, hazardKeys) {
         let items = "";
@@ -3838,7 +4537,7 @@ function renderOverview(forecasts, feature) {
         ? windBaseHtml.replace(
             "</div>",
             windOverviewImpactHtml(
-                forecasts,
+                visibleForecasts,
                 municipalityID
             ) + "</div>"
         )
@@ -3846,7 +4545,7 @@ function renderOverview(forecasts, feature) {
 
     const temperatureHtml =
         temperatureOverviewGroupHtml(
-            forecasts,
+            visibleForecasts,
             municipalityID
         );
 
@@ -3866,7 +4565,7 @@ function renderOverview(forecasts, feature) {
     document.getElementById("overview-subtitle").textContent = t.overviewTitle;
 
     document.getElementById("overview-body").innerHTML = `
-        ${overviewCalendarsHtml(forecasts, municipalityID)}
+        ${overviewCalendarsHtml(visibleForecasts, municipalityID)}
         <div class="overview-calendar-actions">
             <button type="button" id="overview-all-days" class="overview-all-days">${t.allFiveDays}</button>
             <div class="overview-day-heading">${overviewSelectedDate ? t.selectedDay + ": " + formatOverviewDateKey(overviewSelectedDate) : t.overviewTitle}</div>
@@ -3880,39 +4579,49 @@ function renderOverview(forecasts, feature) {
     document.querySelectorAll("[data-overview-date]").forEach(button => {
         button.addEventListener("click", () => {
             overviewSelectedDate = button.dataset.overviewDate;
-            const forecastsOfDay = forecasts.filter(
-                forecast =>
-                    localDateKeyBelgrade(
-                        forecast.valid_time
-                    ) === overviewSelectedDate
-            );
-
-            if (forecastsOfDay.length > 0) {
-                const now = new Date();
-
-                const targetForecast =
-                    forecastsOfDay.find(
-                        forecast =>
-                            new Date(forecast.valid_time) >= now
+            const indicesOfDay =
+                timelineSlots
+                    .map(
+                        (slot, index) => ({
+                            index,
+                            dateKey:
+                                localDateKeyBelgrade(
+                                    slot.valid_time
+                                ),
+                            time:
+                                new Date(
+                                    slot.valid_time
+                                )
+                        })
                     )
-                    || forecastsOfDay[0];
-
-                const targetTime =
-                    new Date(targetForecast.valid_time).getTime();
-
-                const targetIndex =
-                    forecasts.findIndex(
-                        forecast =>
-                            new Date(forecast.valid_time).getTime()
-                            === targetTime
+                    .filter(
+                        item =>
+                            item.dateKey
+                            === overviewSelectedDate
                     );
 
-                if (targetIndex >= 0) {
-                    stopPlay();
-                    loadForecast(targetIndex);
-                }
+            if (indicesOfDay.length > 0) {
+                const now =
+                    new Date();
+
+                const target =
+                    indicesOfDay.find(
+                        item =>
+                            item.time >= now
+                    )
+                    || indicesOfDay[0];
+
+                stopPlay();
+
+                showTimelineSlot(
+                    target.index
+                );
             }
-            renderOverview(forecasts, feature);
+
+            renderOverview(
+                forecasts,
+                feature
+            );
         });
     });
 
@@ -3959,8 +4668,13 @@ async function openFiveDayOverview(feature) {
     panel.setAttribute("aria-hidden", "false");
 
     try {
-        const forecasts = await loadAllForecasts();
-        renderOverview(forecasts, feature);
+        const forecasts =
+            await buildTimelineOverviewData();
+
+        renderOverview(
+            forecasts,
+            feature
+        );
     } catch (error) {
         console.error(error);
         body.innerHTML = `
@@ -5379,7 +6093,11 @@ function updateLegend(
         return;
     }
 
-    if (currentHazard === "overall_risk" || currentHazard === "wind_risk_level") {
+    if (
+        currentHazard === "overall_risk"
+        || currentHazard === "module_risk"
+        || currentHazard === "wind_risk_level"
+    ) {
         const labels = currentLanguage === "sr"
             ? ["без значајног ризика", "низак", "умерен", "висок", "веома висок"]
             : ["no significant risk", "low", "moderate", "high", "very high"];
