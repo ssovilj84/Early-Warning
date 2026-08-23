@@ -12,6 +12,59 @@
     />
 
     <link rel="stylesheet" href="css/app.css">
+
+<style>
+/* MeteoRisk mobile timeline refinement */
+.time-info {
+    min-width: 0;
+}
+#valid-time-label,
+#lead-time-label {
+    min-width: 0;
+}
+#lead-time-label {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+@media (max-width: 700px) {
+    .timeline-main {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .time-slider-wrapper {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .time-info {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+        gap: 6px;
+        align-items: start;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 11px;
+        line-height: 1.2;
+    }
+    #valid-time-label {
+        text-align: left;
+    }
+    #lead-time-label {
+        text-align: right;
+        max-width: 100%;
+    }
+}
+@media (max-width: 430px) {
+    .time-info {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+    #lead-time-label {
+        text-align: left;
+    }
+}
+</style>
+
 </head>
 
 <body>

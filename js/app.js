@@ -96,7 +96,7 @@ const translations = {
             "Интерактивни приказ метеоролошких ризика по јединицама локалне самоуправе у Републици Србији",
 
         model:
-            "Модел: GEFS ансамбл",
+            "Пробабилистички мултимодел систем",
 
         updated:
             "Последње ажурирање података",
@@ -182,6 +182,7 @@ const translations = {
         windGroup: "💨 ВЕТАР",
         temperatureGroup: "🌡 ТЕМПЕРАТУРА",
         maxTemperature: "🌡 Максимална температура",
+        heatStress: "🔥 Топлотни стрес",
         temperatureCategory: "Категорија",
         mostLikelyCategory: "Највероватнија категорија",
         warmestPeriod: "Најтоплији део дана",
@@ -254,7 +255,7 @@ const translations = {
             "Interactive Weather Risk Map by Local Government Units in the Republic of Serbia",
 
         model:
-            "Model: GEFS ensemble",
+            "Probabilistic multimodel system",
 
         updated:
             "Last data update",
@@ -340,6 +341,7 @@ const translations = {
         windGroup: "💨 WIND",
         temperatureGroup: "🌡 TEMPERATURE",
         maxTemperature: "🌡 Maximum temperature",
+        heatStress: "🔥 Heat stress",
         temperatureCategory: "Category",
         mostLikelyCategory: "Most likely category",
         warmestPeriod: "Warmest part of day",
@@ -1091,7 +1093,7 @@ function currentHazardGroup() {
         return "wind";
     }
 
-    if (currentHazard === "max_temperature") {
+    if (["max_temperature", "heat_stress"].includes(currentHazard)) {
         return "temperature";
     }
 
@@ -1221,13 +1223,14 @@ async function buildTimelineSlots() {
     */
     const allTemperatureDays =
         await loadTemperatureDailyRows();
+    const allHeatStressDays = await loadHeatStressDailyRows();
 
     const todayKey =
         localTodayKey();
 
     const futureTemperatureDates =
         Array.from(
-            allTemperatureDays.keys()
+            new Set([...allTemperatureDays.keys(), ...allHeatStressDays.keys()])
         )
         .filter(dateKey => dateKey >= todayKey)
         .sort();
@@ -1349,10 +1352,14 @@ async function showTimelineSlot(index) {
                 && data.storms_multimodel_matches > 0
             );
 
+        /* The five-day cache carries daily Heat Index values.
+           For the interactive timeline, replace them with the exact 3-hour slot. */
+        await applyHeatStressTimelineOverlay(data);
+
         data.temperature_available =
             Boolean(
-                data.temperature_multimodel
-                && data.temperature_multimodel_matches > 0
+                (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
+                || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
             );
 
     } else {
@@ -1370,17 +1377,20 @@ async function showTimelineSlot(index) {
             storms_available: false,
             wind_available: false,
             temperature_multimodel: false,
-            temperature_available: false
+            temperature_available: false,
+            heat_stress_multimodel: false
         };
 
         await applyTemperatureOverlay(
             data
         );
 
+        await applyHeatStressTimelineOverlay(data);
+
         data.temperature_available =
             Boolean(
-                data.temperature_multimodel
-                && data.temperature_multimodel_matches > 0
+                (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
+                || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
             );
     }
 
@@ -2001,11 +2011,17 @@ function temperatureRiskLevel(data) {
 }
 
 
+function heatStressRiskLevel(data) {
+    if (!data || !currentModelData?.temperature_available || !data.heat_stress_multimodel) return 0;
+    return stormColorLevelNumber(data.heat_stress_color);
+}
+
 function overallRiskLevel(data) {
     return Math.max(
         stormRiskLevel(data),
         windRiskLevel(data),
-        temperatureRiskLevel(data)
+        temperatureRiskLevel(data),
+        heatStressRiskLevel(data)
     );
 }
 
@@ -2068,6 +2084,12 @@ function styleFeature(
         fillColor = stormRiskColor(
             data.temperature_color
         );
+    } else if (
+        currentHazard === "heat_stress"
+        && data
+        && data.heat_stress_multimodel
+    ) {
+        fillColor = stormRiskColor(data.heat_stress_color);
     } else if (
         ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
         && data
@@ -2207,13 +2229,44 @@ function popupContent(
 
             <div class="popup-valid">
                 ${currentLanguage === "sr" ? "Дневна прогноза" : "Daily forecast"}:
-                ${data.temperature_date || "—"}
+                ${data.temperature_date || localDateKeyBelgrade(currentModelData?.valid_time) || "—"}
             </div>
 
             ${temperatureDetailHtml(data)}
         `;
     }
 
+
+    if (currentHazard === "heat_stress") {
+        return `
+            <div class="popup-title">${name}</div>
+            <div class="popup-valid">
+                ${currentLanguage === "sr" ? "Важи за" : "Valid for"}:
+                ${(() => {
+                    const sourceTime =
+                        data.heat_stress_local_time
+                        || data.heat_stress_valid_time
+                        || currentModelData?.valid_time
+                        || "";
+                    const d = sourceTime ? new Date(sourceTime) : null;
+                    if (!d || !Number.isFinite(d.getTime())) return "—";
+                    return new Intl.DateTimeFormat(
+                        currentLanguage === "sr" ? "sr-RS" : "en-GB",
+                        {
+                            timeZone: "Europe/Belgrade",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false
+                        }
+                    ).format(d);
+                })()}
+            </div>
+            ${heatStressDetailHtml(data)}
+        `;
+    }
 
     if (
         ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
@@ -2481,6 +2534,8 @@ async function loadForecast(
         await applyTemperatureOverlay(
             data
         );
+
+        await applyHeatStressTimelineOverlay(data);
 
         currentModelData =
             data;
@@ -2775,8 +2830,8 @@ function updateTimelineLabels() {
         "lead-time-label"
     ).textContent =
         currentLanguage === "sr"
-        ? "Континуирана временска линија · недоступни производи су означени"
-        : "Continuous timeline · unavailable products are marked";
+        ? "Временска линија · недоступно је означено"
+        : "Timeline · unavailable marked";
 }
 
 
@@ -3070,6 +3125,29 @@ const temperatureGroupButton =
 const temperatureSubcontrols =
     document.getElementById("temperature-subcontrols");
 
+// Heat-stress button is injected here so index.html does not need a manual edit.
+if (temperatureSubcontrols && !document.getElementById("btn-heat-stress")) {
+    const heatButton = document.createElement("button");
+    heatButton.id = "btn-heat-stress";
+    heatButton.className = "layer-button";
+    heatButton.dataset.layer = "heat_stress";
+    heatButton.textContent = translations[currentLanguage].heatStress;
+    temperatureSubcontrols.appendChild(heatButton);
+    heatButton.addEventListener("click", function() {
+        currentHazard = this.dataset.layer;
+        document.querySelectorAll(".layer-button").forEach(btn => btn.classList.remove("active"));
+        this.classList.add("active");
+        updateHazardAvailabilityLabels();
+        redrawMap();
+        updateLegend();
+        if (selectedLayer) {
+            const properties = selectedLayer.feature.properties;
+            if (isMobileView() && document.getElementById("mobile-detail-panel").classList.contains("open")) openMobileDetail(properties);
+            else selectedLayer.bindPopup(popupContent(properties), { maxWidth: 420 }).openPopup();
+        }
+    });
+}
+
 temperatureGroupButton.addEventListener(
     "click",
     () => {
@@ -3128,6 +3206,8 @@ async function loadAllForecasts() {
                     data
                 );
 
+                await applyHeatStressOverlay(data);
+
                 data.wind_available = true;
 
                 data.storms_available =
@@ -3138,8 +3218,8 @@ async function loadAllForecasts() {
 
                 data.temperature_available =
                     Boolean(
-                        data.temperature_multimodel
-                        && data.temperature_multimodel_matches > 0
+                        (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
+                        || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
                     );
 
                 return data;
@@ -4735,6 +4815,43 @@ document
     );
 
 
+
+let productMetadata = null;
+
+async function loadProductMetadata() {
+    try {
+        const response = await fetch("./data/product_metadata.json", { cache: "no-store" });
+        if (!response.ok) return null;
+        productMetadata = await response.json();
+        return productMetadata;
+    } catch (error) {
+        console.warn("Product metadata could not be loaded.", error);
+        return null;
+    }
+}
+
+function latestAvailableDataRun() {
+    if (productMetadata && productMetadata.last_successful_update_utc) {
+        const d = new Date(productMetadata.last_successful_update_utc);
+        if (Number.isFinite(d.getTime())) return d;
+    }
+
+    if (!currentModelData) return null;
+
+    const candidates = [
+        currentModelData.temperature_model_run,
+        currentModelData.storm_reference_run,
+        currentModelData.model_run,
+        displayReferenceRun
+    ].filter(Boolean).map(v => new Date(v)).filter(d => Number.isFinite(d.getTime()));
+
+    if (!candidates.length) return currentModelData.valid_time || null;
+    return new Date(Math.max(...candidates.map(d => d.getTime())));
+}
+
+
+loadProductMetadata();
+
 /* ============================================================
    HEADER
    ============================================================ */
@@ -4758,16 +4875,9 @@ function updateHeader() {
             "subtitle"
         )
         .textContent =
-            (
-                currentModelData
-                && currentModelData.storms_multimodel
-            )
-            ? (
-                currentLanguage === "sr"
-                ? "Олује: ECMWF ENS + GEFS, уз ICON-EU EPS када је доступан · Tmax: GEFS + ICON-EU EPS · Остали ризици: постојећи производи"
-                : "Storms: ECMWF ENS + GEFS, with ICON-EU EPS where available · Tmax: GEFS + ICON-EU EPS · Other risks: existing products"
-            )
-            : t.model;
+            currentLanguage === "sr"
+            ? "Пробабилистички мултимодел систем"
+            : "Probabilistic multimodel system";
 
     if (
         currentModelData
@@ -4783,16 +4893,7 @@ function updateHeader() {
                 ": "
                 +
                 formatValidTime(
-                    (
-                        currentHazardGroup() === "temperature"
-                        && currentModelData.temperature_model_run
-                    )
-                    ? currentModelData.temperature_model_run
-                    : (
-                        displayReferenceRun
-                        || currentModelData.model_run
-                        || currentModelData.valid_time
-                    )
+                    latestAvailableDataRun()
                 );
     }
 }
@@ -4846,6 +4947,8 @@ function updateLanguage() {
     document.getElementById("wind-group-label").textContent = t.windGroup;
     document.getElementById("temperature-group-label").textContent = t.temperatureGroup;
     document.getElementById("btn-max-temperature").textContent = t.maxTemperature;
+    const heatBtnLang = document.getElementById("btn-heat-stress");
+    if (heatBtnLang) heatBtnLang.textContent = t.heatStress;
     document.getElementById("btn-wind-risk").textContent = t.windOverall;
     document.getElementById("btn-wind-10").textContent = t.wind10;
     document.getElementById("btn-wind-17").textContent = t.wind17;
@@ -5063,6 +5166,15 @@ function updateLegend(
         return;
     }
 
+
+    if (currentHazard === "heat_stress") {
+        const labels = currentLanguage === "sr"
+            ? ["<27 °C — без значајног топлотног стреса", "27–32 °C — повишен", "32–41 °C — изражен", "41–54 °C — веома висок", "≥54 °C — екстреман"]
+            : ["<27 °C — no significant heat stress", "27–32 °C — elevated", "32–41 °C — marked", "41–54 °C — very high", "≥54 °C — extreme"];
+        const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        element.innerHTML = `<div class="legend-title">${translations[currentLanguage].heatStress}</div>${labels.map((label,i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}`;
+        return;
+    }
 
     if (
         ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
