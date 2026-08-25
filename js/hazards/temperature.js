@@ -254,93 +254,60 @@ function temperatureImpactRecommendation(data) {
     };
 }
 
-function temperatureDetailHtml(data) {
+function temperatureDetailHtml(data, options = {}) {
     const t = translations[currentLanguage];
 
     if (!data || !data.temperature_multimodel) {
-        return `
-            <div class="popup-note">
-                ${currentLanguage === "sr"
-                    ? "Мултимоделска прогноза максималне температуре није доступна за овај дан."
-                    : "Multimodel maximum-temperature forecast is unavailable for this day."}
-            </div>
-        `;
+        return riskSummaryHtml({
+            title: t.maxTemperature,
+            available: false
+        });
     }
 
-    return `
+    const ir = temperatureImpactRecommendation(data);
+    const level = stormColorLevelNumber(data.temperature_color);
+
+    const technical = `
         <div class="multimodel-card">
+            <div class="popup-section">${t.maxTemperature}</div>
+            <div class="popup-row">${t.multimodelTmax}: <b>${formatNumber(data.max_temperature, 1)} °C</b></div>
+            <div class="popup-row">${t.temperatureCategory}: <b>${translatedTemperatureCategory(data)}</b></div>
+            <div class="popup-row">${t.categoryProbability}: <b>${formatProbability(data.temperature_category_probability)}</b></div>
+            <div class="popup-row">${t.warmestPeriod}: <b>${data.temperature_warmest_period || "—"}</b></div>
 
-            <div class="popup-section">
-                ${t.maxTemperature}
-            </div>
-
-            <div class="popup-row">
-                ${t.multimodelTmax}:
-                <b>${formatNumber(data.max_temperature, 1)} °C</b>
-            </div>
-
-            <div class="popup-row">
-                ${t.temperatureCategory}:
-                <b>${translatedTemperatureCategory(data)}</b>
-            </div>
-
-            <div class="popup-row">
-                ${t.categoryProbability}:
-                <b>${formatProbability(data.temperature_category_probability)}</b>
-            </div>
-
-            <div class="popup-row">
-                ${t.warmestPeriod}:
-                <b>${data.temperature_warmest_period || "—"}</b>
-            </div>
-
-            <div class="popup-section">${t.impacts}</div>
-            <div class="popup-note">${temperatureImpactRecommendation(data).impact}</div>
-
-            <div class="popup-section">${t.recommendations}</div>
-            <div class="popup-note">${temperatureImpactRecommendation(data).recommendation}</div>
-
-            <div class="popup-section">
-                ${currentLanguage === "sr"
-                    ? "Модели"
-                    : "Models"}
-            </div>
-
+            <div class="popup-section">${currentLanguage === "sr" ? "Модели" : "Models"}</div>
             <div class="multimodel-model-grid">
-                <div>
-                    <span>GEFS</span>
-                    <b>${formatNumber(data.temperature_gefs_tmax, 1)} °C</b>
-                </div>
-                <div>
-                    <span>ICON-EU EPS</span>
-                    <b>${formatNumber(data.temperature_icon_tmax, 1)} °C</b>
-                </div>
-                <div>
-                    <span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span>
-                    <b>${formatNumber(data.max_temperature, 1)} °C</b>
-                </div>
+                <div><span>GEFS</span><b>${formatNumber(data.temperature_gefs_tmax, 1)} °C</b></div>
+                <div><span>ICON-EU EPS</span><b>${formatNumber(data.temperature_icon_tmax, 1)} °C</b></div>
+                <div><span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span><b>${formatNumber(data.max_temperature, 1)} °C</b></div>
             </div>
 
-            <div class="popup-section">
-                ${currentLanguage === "sr"
-                    ? "Расподела категорија"
-                    : "Category distribution"}
-            </div>
-
+            <div class="popup-section">${currentLanguage === "sr" ? "Расподела категорија" : "Category distribution"}</div>
             <div class="popup-row">&lt;30 °C: <b>${formatProbability(data.temperature_p_below_30)}</b></div>
             <div class="popup-row">30–35 °C: <b>${formatProbability(data.temperature_p_30_35)}</b></div>
             <div class="popup-row">35–38 °C: <b>${formatProbability(data.temperature_p_35_38)}</b></div>
             <div class="popup-row">38–40 °C: <b>${formatProbability(data.temperature_p_38_40)}</b></div>
             <div class="popup-row">≥40 °C: <b>${formatProbability(data.temperature_p_ge_40)}</b></div>
 
-            <div class="popup-note">
-                ${currentLanguage === "sr"
-                    ? "Дневни развојни мултимоделски производ: GEFS и ICON-EU EPS имају једнаку тежину 50:50. Категоријске вероватноће још нису калибрисане."
-                    : "Daily developmental multimodel product: GEFS and ICON-EU EPS have equal 50:50 weight. Category probabilities are not yet calibrated."}
-            </div>
+            <div class="popup-note">${currentLanguage === "sr"
+                ? "Дневни развојни мултимоделски производ: GEFS и ICON-EU EPS имају једнаку тежину 50:50. Категоријске вероватноће још нису калибрисане."
+                : "Daily developmental multimodel product: GEFS and ICON-EU EPS have equal 50:50 weight. Category probabilities are not yet calibrated."}</div>
         </div>
     `;
+
+    if (options.technicalOnly) return technical;
+
+    return riskSummaryHtml({
+        title: t.maxTemperature,
+        level,
+        category: translatedTemperatureCategory(data),
+        value: `${t.multimodelTmax}: <b>${formatNumber(data.max_temperature, 1)} °C</b>`,
+        impact: ir.impact,
+        recommendation: ir.recommendation,
+        meta: `${t.warmestPeriod}: ${data.temperature_warmest_period || "—"}`
+    }) + expertDetailsHtml(technical);
 }
+
 
 
 /* ============================================================
@@ -955,60 +922,29 @@ function thermalStressImpactRecommendation(data) {
     };
 }
 
-function heatStressDetailHtml(data) {
+function heatStressDetailHtml(data, options = {}) {
     if (!data || !data.heat_stress_multimodel) {
-        return `
-            <div class="popup-note">
-                ${currentLanguage === "sr"
-                    ? "Топлотни стрес није доступан за овај термин."
-                    : "Thermal stress is unavailable for this time slot."}
-            </div>
-        `;
+        return riskSummaryHtml({
+            title: translations[currentLanguage].heatStress,
+            available: false
+        });
     }
 
     const mode = String(data.heat_stress_mode || "").toUpperCase();
     const showDay = mode === "DAY" || mode === "TRANSITION";
     const showNight = mode === "NIGHT" || mode === "TRANSITION";
+    const ir = thermalStressImpactRecommendation(data);
+    const level = stormColorLevelNumber(data.heat_stress_color);
 
     const dayBlock = showDay ? `
-        <div class="popup-section">
-            ${currentLanguage === "sr"
-                ? "Дневни топлотни стрес (Heat Index)"
-                : "Daytime heat stress (Heat Index)"}
-        </div>
-
-        <div class="popup-row">
-            ${currentLanguage === "sr"
-                ? "Мултимоделски Heat Index"
-                : "Multimodel Heat Index"}:
-            <b>${formatNumber(data.heat_stress, 1)} °C</b>
-        </div>
-
+        <div class="popup-section">${currentLanguage === "sr" ? "Дневни топлотни стрес (Heat Index)" : "Daytime heat stress (Heat Index)"}</div>
+        <div class="popup-row">${currentLanguage === "sr" ? "Мултимоделски Heat Index" : "Multimodel Heat Index"}: <b>${formatNumber(data.heat_stress, 1)} °C</b></div>
         <div class="multimodel-model-grid">
-            <div>
-                <span>GEFS</span>
-                <b>${data.heat_stress_gefs === null || data.heat_stress_gefs === undefined
-                    ? "—"
-                    : formatNumber(data.heat_stress_gefs, 1) + " °C"}</b>
-            </div>
-            <div>
-                <span>ICON global EPS</span>
-                <b>${data.heat_stress_icon === null || data.heat_stress_icon === undefined
-                    ? "—"
-                    : formatNumber(data.heat_stress_icon, 1) + " °C"}</b>
-            </div>
-            <div>
-                <span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span>
-                <b>${formatNumber(data.heat_stress, 1)} °C</b>
-            </div>
+            <div><span>GEFS</span><b>${data.heat_stress_gefs == null ? "—" : formatNumber(data.heat_stress_gefs, 1) + " °C"}</b></div>
+            <div><span>ICON global EPS</span><b>${data.heat_stress_icon == null ? "—" : formatNumber(data.heat_stress_icon, 1) + " °C"}</b></div>
+            <div><span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span><b>${formatNumber(data.heat_stress, 1)} °C</b></div>
         </div>
-
-        <div class="popup-section">
-            ${currentLanguage === "sr"
-                ? "Расподела Heat Index категорија"
-                : "Heat Index category distribution"}
-        </div>
-
+        <div class="popup-section">${currentLanguage === "sr" ? "Расподела Heat Index категорија" : "Heat Index category distribution"}</div>
         <div class="popup-row">&lt;27 °C: <b>${formatProbability(data.heat_stress_p_below_27)}</b></div>
         <div class="popup-row">27–32 °C: <b>${formatProbability(data.heat_stress_p_27_32)}</b></div>
         <div class="popup-row">32–41 °C: <b>${formatProbability(data.heat_stress_p_32_41)}</b></div>
@@ -1017,44 +953,14 @@ function heatStressDetailHtml(data) {
     ` : "";
 
     const nightBlock = showNight ? `
-        <div class="popup-section">
-            ${currentLanguage === "sr"
-                ? "Ноћни топлотни стрес"
-                : "Night-time heat stress"}
-        </div>
-
-        <div class="popup-row">
-            ${currentLanguage === "sr"
-                ? "Мултимоделски минимум током ноћи"
-                : "Multimodel overnight minimum"}:
-            <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b>
-        </div>
-
+        <div class="popup-section">${currentLanguage === "sr" ? "Ноћни топлотни стрес" : "Night-time heat stress"}</div>
+        <div class="popup-row">${currentLanguage === "sr" ? "Мултимоделски минимум током ноћи" : "Multimodel overnight minimum"}: <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b></div>
         <div class="multimodel-model-grid">
-            <div>
-                <span>GEFS</span>
-                <b>${data.heat_stress_gefs_night_tmin === null || data.heat_stress_gefs_night_tmin === undefined
-                    ? "—"
-                    : formatNumber(data.heat_stress_gefs_night_tmin, 1) + " °C"}</b>
-            </div>
-            <div>
-                <span>ICON global EPS</span>
-                <b>${data.heat_stress_icon_night_tmin === null || data.heat_stress_icon_night_tmin === undefined
-                    ? "—"
-                    : formatNumber(data.heat_stress_icon_night_tmin, 1) + " °C"}</b>
-            </div>
-            <div>
-                <span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span>
-                <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b>
-            </div>
+            <div><span>GEFS</span><b>${data.heat_stress_gefs_night_tmin == null ? "—" : formatNumber(data.heat_stress_gefs_night_tmin, 1) + " °C"}</b></div>
+            <div><span>ICON global EPS</span><b>${data.heat_stress_icon_night_tmin == null ? "—" : formatNumber(data.heat_stress_icon_night_tmin, 1) + " °C"}</b></div>
+            <div><span>${currentLanguage === "sr" ? "Мултимодел" : "Multimodel"}</span><b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b></div>
         </div>
-
-        <div class="popup-section">
-            ${currentLanguage === "sr"
-                ? "Расподела категорија ноћног минимума"
-                : "Overnight-minimum category distribution"}
-        </div>
-
+        <div class="popup-section">${currentLanguage === "sr" ? "Расподела категорија ноћног минимума" : "Overnight-minimum category distribution"}</div>
         <div class="popup-row">&lt;20 °C: <b>${formatProbability(data.heat_stress_p_tmin_lt20)}</b></div>
         <div class="popup-row">20–22 °C: <b>${formatProbability(data.heat_stress_p_tmin_20_22)}</b></div>
         <div class="popup-row">22–24 °C: <b>${formatProbability(data.heat_stress_p_tmin_22_24)}</b></div>
@@ -1062,55 +968,36 @@ function heatStressDetailHtml(data) {
         <div class="popup-row">≥26 °C: <b>${formatProbability(data.heat_stress_p_tmin_ge26)}</b></div>
     ` : "";
 
-    return `
+    const technical = `
         <div class="multimodel-card">
-
-            <div class="popup-section">
-                ${currentLanguage === "sr"
-                    ? "24-часовни топлотни стрес"
-                    : "24-hour thermal stress"}
-            </div>
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Режим" : "Mode"}:
-                <b>${thermalStressModeTranslation(mode)}</b>
-            </div>
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Категорија" : "Category"}:
-                <b>${translatedHeatStressCategory(data)}</b>
-            </div>
-
+            <div class="popup-section">${currentLanguage === "sr" ? "24-часовни топлотни стрес" : "24-hour thermal stress"}</div>
+            <div class="popup-row">${currentLanguage === "sr" ? "Режим" : "Mode"}: <b>${thermalStressModeTranslation(mode)}</b></div>
+            <div class="popup-row">${currentLanguage === "sr" ? "Категорија" : "Category"}: <b>${translatedHeatStressCategory(data)}</b></div>
             ${dayBlock}
             ${nightBlock}
-
-            ${mode === "TRANSITION" ? `
-                <div class="popup-note">
-                    ${currentLanguage === "sr"
-                        ? "Прелазни термин комбинује дневни Heat Index и сигнал топле/тропске ноћи постепеним тежинским прелазом."
-                        : "The transition slot gradually blends the daytime Heat Index with the warm/tropical-night signal."}
-                </div>
-            ` : ""}
-
-            <div class="popup-section">
-                ${currentLanguage === "sr" ? "Могући утицаји" : "Possible impacts"}
-            </div>
-            <div class="popup-note">
-                ${thermalStressImpactRecommendation(data).impact}
-            </div>
-
-            <div class="popup-section">
-                ${currentLanguage === "sr" ? "Препоруке" : "Recommendations"}
-            </div>
-            <div class="popup-note">
-                ${thermalStressImpactRecommendation(data).recommendation}
-            </div>
-
-            <div class="popup-note">
-                ${currentLanguage === "sr"
-                    ? "Развојни мултимоделски производ GEFS + ICON global EPS. Дневни део користи Heat Index, а ноћни део ансамблску прогнозу минималне температуре током ноћи. Производ је експерименталан."
-                    : "Developmental GEFS + ICON global EPS multimodel product. The daytime component uses Heat Index and the night-time component uses the ensemble overnight-minimum forecast. The product is experimental."}
-            </div>
+            ${mode === "TRANSITION" ? `<div class="popup-note">${currentLanguage === "sr"
+                ? "Прелазни термин комбинује дневни Heat Index и сигнал топле/тропске ноћи постепеним тежинским прелазом."
+                : "The transition slot gradually blends the daytime Heat Index with the warm/tropical-night signal."}</div>` : ""}
+            <div class="popup-note">${currentLanguage === "sr"
+                ? "Развојни мултимоделски производ GEFS + ICON global EPS. Дневни део користи Heat Index, а ноћни део ансамблску прогнозу минималне температуре током ноћи. Производ је експерименталан."
+                : "Developmental GEFS + ICON global EPS multimodel product. The daytime component uses Heat Index and the night-time component uses the ensemble overnight-minimum forecast. The product is experimental."}</div>
         </div>
     `;
+
+    if (options.technicalOnly) return technical;
+
+    const value = mode === "NIGHT"
+        ? `${currentLanguage === "sr" ? "Ноћни минимум" : "Overnight minimum"}: <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b>`
+        : `${currentLanguage === "sr" ? "Heat Index / сигнал" : "Heat Index / signal"}: <b>${formatNumber(data.heat_stress, 1)} °C</b>`;
+
+    return riskSummaryHtml({
+        title: translations[currentLanguage].heatStress,
+        level,
+        category: translatedHeatStressCategory(data),
+        value,
+        impact: ir.impact,
+        recommendation: ir.recommendation,
+        meta: `${currentLanguage === "sr" ? "Режим" : "Mode"}: ${thermalStressModeTranslation(mode)}`
+    }) + expertDetailsHtml(technical);
 }
+

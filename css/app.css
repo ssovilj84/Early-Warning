@@ -885,3 +885,291 @@
             }
             body.mobile-detail-open { overflow: hidden; }
         }
+
+/* =====================================================
+   METEORISK UX REFINEMENT — 2026-08-24
+   Presentation only: no hazard/risk logic is changed.
+   ===================================================== */
+
+/* Top-level modules read as tabs; parameters are visually secondary. */
+.hazard-group-button {
+    background: #fff;
+    color: #222;
+    border-color: #9aa2aa;
+    box-shadow: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hazard-group-button:hover {
+    background: #f3f5f7;
+    border-color: #555;
+}
+
+.hazard-group-button.open {
+    background: #222;
+    color: #fff;
+    border-color: #222;
+    box-shadow: 0 2px 7px rgba(0,0,0,0.14);
+}
+
+.hazard-subcontrols.open {
+    padding: 8px;
+    border: 1px solid #e1e4e8;
+    border-radius: 10px;
+    background: #f8f9fb;
+}
+
+.hazard-subcontrols .layer-button {
+    background: #fff;
+}
+
+.hazard-subcontrols .layer-button.active {
+    background: #222;
+    color: #fff;
+}
+
+/* User-first risk hierarchy in municipality details. */
+.risk-summary-card {
+    --risk-accent: #8b949e;
+    margin: 9px 0 10px;
+    padding: 12px 13px;
+    border: 1px solid #d9dde2;
+    border-left: 6px solid var(--risk-accent);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.risk-summary-card.risk-level-0 { --risk-accent: #78b943; }
+.risk-summary-card.risk-level-1 { --risk-accent: #d9cf35; }
+.risk-summary-card.risk-level-2 { --risk-accent: #ed8d35; }
+.risk-summary-card.risk-level-3 { --risk-accent: #d7191c; }
+.risk-summary-card.risk-level-4 { --risk-accent: #7b3294; }
+.risk-summary-card.risk-unavailable { --risk-accent: #9aa2aa; background: #f7f7f7; }
+
+.risk-summary-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.risk-eyebrow {
+    font-size: 11px;
+    line-height: 1.2;
+    color: #68727d;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.risk-category {
+    margin-top: 3px;
+    font-size: 19px;
+    line-height: 1.22;
+    font-weight: 800;
+    color: #1f252b;
+}
+
+.risk-badge {
+    flex: 0 0 auto;
+    max-width: 145px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: var(--risk-accent);
+    color: #111;
+    font-size: 10px;
+    line-height: 1.15;
+    font-weight: 800;
+    text-align: center;
+}
+
+.risk-level-3 .risk-badge,
+.risk-level-4 .risk-badge {
+    color: #fff;
+}
+
+.risk-primary-value {
+    margin-top: 8px;
+    font-size: 14px;
+    line-height: 1.35;
+    color: #303841;
+}
+
+.risk-meta {
+    margin-top: 6px;
+    color: #68727d;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.impact-action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 11px;
+}
+
+.impact-action-card {
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: #f6f8fa;
+    border: 1px solid #e3e7eb;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.impact-action-title {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #5c6670;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.expert-details {
+    margin: 8px 0 10px;
+    border: 1px solid #dde2e7;
+    border-radius: 9px;
+    background: #fafbfc;
+    overflow: hidden;
+}
+
+.expert-details > summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #343b43;
+    user-select: none;
+}
+
+.expert-details[open] > summary {
+    border-bottom: 1px solid #e3e6e9;
+    background: #f3f5f7;
+}
+
+.expert-details-body {
+    padding: 0 10px 10px;
+}
+
+.expert-details .multimodel-card {
+    box-shadow: none;
+}
+
+/* Explicit unavailable state in legends. */
+.legend-box.legend-unavailable {
+    background: repeating-linear-gradient(
+        135deg,
+        #b7bdc3 0,
+        #b7bdc3 4px,
+        #e4e7ea 4px,
+        #e4e7ea 8px
+    );
+}
+
+/* Toolbar action labels can collapse on phones without losing accessible titles. */
+.action-button .action-icon,
+.action-button .action-label {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.action-button .action-icon {
+    margin-right: 5px;
+}
+
+@media (max-width: 800px) {
+    .header {
+        padding-bottom: 8px;
+    }
+
+    .toolbar {
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+
+    .search-wrapper {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .action-button {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 38px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+    }
+
+    .action-button .action-icon {
+        margin: 0;
+    }
+
+    .action-button .action-label {
+        display: none;
+    }
+
+    .hazard-subcontrols.open {
+        padding: 6px;
+    }
+
+    .impact-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .risk-category {
+        font-size: 17px;
+    }
+
+    .risk-badge {
+        max-width: 120px;
+    }
+
+    /* Give the map more of the first mobile viewport. */
+    #map {
+        height: 68vh;
+    }
+}
+
+@media (max-width: 430px) {
+    .toolbar {
+        padding-left: 7px;
+        padding-right: 7px;
+    }
+
+    .action-button {
+        flex-basis: 36px;
+        width: 36px;
+    }
+
+    .risk-summary-top {
+        gap: 7px;
+    }
+}
+
+/* =====================================================
+   ENVIRONMENT MODULES v1
+   ===================================================== */
+.hazard-group-button.single-module {
+    justify-content: center;
+}
+
+#air-quality-subcontrols .layer-button {
+    min-width: 92px;
+}
+
+@media (max-width: 800px) {
+    .hazard-group-button.single-module {
+        justify-content: center;
+    }
+    #air-quality-subcontrols .layer-button {
+        flex: 1 1 30%;
+        min-width: 0;
+    }
+}

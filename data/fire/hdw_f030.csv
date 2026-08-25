@@ -1,0 +1,195 @@
+valid_time,Value_sc,hdw,hdw_percentile,hdw_color,max_vpd_hpa,max_wind_ms,pl_levels_used,spatial_aggregation,source,model_run,retrieved_at_utc,method
+2026-08-26T06:00:00Z,ЂАКОВИЦА,13.55,,,15.37,0.88,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЈАГОДИНА-ГРАД,35.09,,,14.78,2.37,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЉИГ,67.21,,,13.62,4.94,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЋУПРИЈА,20.74,,,10.47,1.98,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АДА,100.74,,,18.38,5.48,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АЛЕКСАНДРОВАЦ,34.16,,,11.76,2.90,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АЛЕКСИНАЦ,26.24,,,10.95,2.40,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АЛИБУНАР,65.46,,,14.91,4.39,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АПАТИН,105.51,,,15.70,6.72,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АРАНЂЕЛОВАЦ,56.06,,,12.83,4.37,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАЈИНА БАШТА,74.33,,,13.87,5.36,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАБУШНИЦА,77.28,,,14.92,5.18,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАЧКА ПАЛАНКА,110.31,,,14.90,7.40,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАЧКА ТОПОЛА,105.54,,,16.01,6.59,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕЛА ПАЛАНКА,88.17,,,17.47,5.05,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ВОЖДОВАЦ,84.30,,,13.94,6.05,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ЛАЗАРЕВАЦ,97.89,,,14.86,6.59,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-МЛАДЕНОВАЦ,87.19,,,13.93,6.26,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-СОПОТ,81.50,,,12.81,6.36,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-СУРЧИН,92.51,,,15.50,5.97,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЛАЦЕ,27.99,,,12.51,2.24,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БОЈНИК,67.71,,,17.28,3.92,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БОЉЕВАЦ,7.29,,,5.53,1.32,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БОР,8.56,,,6.87,1.25,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БОСИЛЕГРАД,41.17,,,12.89,3.19,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БУЈАНОВАЦ,5.94,,,11.44,0.52,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВАЉЕВО-ГРАД,63.32,,,12.73,4.98,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВАРВАРИН,30.49,,,11.47,2.66,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВЕЛИКА ПЛАНА,63.92,,,15.62,4.09,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВЕЛИКО ГРАДИШТЕ,54.21,,,13.69,3.96,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВЛАДИЧИН ХАН,68.11,,,16.22,4.20,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВЛАСОТИНЦЕ,84.37,,,17.89,4.72,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВРАЊЕ-ГРАД,43.49,,,17.95,2.42,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВРБАС,104.15,,,15.36,6.78,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВРШАЦ,55.85,,,14.77,3.78,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВУЧИТРН,91.24,,,21.00,4.34,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГЊИЛАНЕ,76.81,,,17.82,4.31,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГОРЊИ МИЛАНОВАЦ,35.77,,,13.24,2.70,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГОРА,17.51,,,8.16,2.15,0,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ДЕСПОТОВАЦ,59.60,,,12.01,4.96,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ДЕЧАНИ,11.17,,,15.10,0.74,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ДИМИТРОВГРАД,95.87,,,17.95,5.34,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЖАБАЉ,106.48,,,18.20,5.85,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЖАГУБИЦА,8.81,,,8.29,1.06,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЖИТИШТЕ,86.05,,,17.82,4.83,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЖИТОРАЂА,26.52,,,12.71,2.09,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЗАЈЕЧАР-ГРАД,12.65,,,9.49,1.33,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЗВЕЧАН,86.43,,,18.39,4.70,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЗРЕЊАНИН-ГРАД,83.73,,,17.02,4.92,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ИВАЊИЦА,50.67,,,10.79,4.70,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ИСТОК,43.67,,,21.13,2.07,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КЊАЖЕВАЦ,84.11,,,15.65,5.38,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КАЊИЖА,101.89,,,18.55,5.49,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КАЧАНИК,49.22,,,18.57,2.65,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КИКИНДА,69.48,,,18.37,3.78,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КЛАДОВО,19.33,,,10.46,1.85,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КЛИНА,52.00,,,16.65,3.12,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КНИЋ,43.59,,,14.43,3.02,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОВИН,86.44,,,16.40,5.27,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОСЈЕРИЋ,74.10,,,13.58,5.45,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОСОВСКА МИТРОВИЦА,68.30,,,14.20,4.81,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОЦЕЉЕВА,82.43,,,13.06,6.31,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КРАЉЕВО-ГРАД,66.03,,,12.72,5.19,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КРАГУЈЕВАЦ-ГРАД,46.14,,,15.50,2.98,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КРУШЕВАЦ-ГРАД,43.31,,,13.28,3.26,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КУРШУМЛИЈА,76.64,,,18.99,4.04,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КУЧЕВО,17.94,,,10.36,1.73,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛЕСКОВАЦ-ГРАД,72.10,,,14.40,5.01,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛИПЉАН,89.76,,,17.44,5.15,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛОЗНИЦА-ГРАД,67.69,,,11.94,5.67,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛУЧАНИ,27.60,,,12.34,2.24,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МАЈДАНПЕК,15.36,,,7.64,2.01,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МАЛИ ИЂОШ,103.87,,,16.62,6.25,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МАЛО ЦРНИЋЕ,70.45,,,15.15,4.65,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МЕДВЕЂА,75.04,,,14.98,5.01,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НЕГОТИН,12.48,,,11.47,1.09,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НИШ-НИШКА БАЊА,16.07,,,12.33,1.30,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВА ВАРОШ,44.27,,,10.79,4.10,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВА ЦРЊА,72.81,,,17.81,4.09,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВИ БЕЧЕЈ,97.54,,,18.80,5.19,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВИ КНЕЖЕВАЦ,101.25,,,20.67,4.90,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВИ ПАЗАР-ГРАД,66.11,,,15.31,4.32,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВИ САД-ГРАД,108.74,,,15.32,7.10,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ОЏАЦИ,102.26,,,15.20,6.73,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ОПОВО,82.29,,,15.93,5.17,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ОСЕЧИНА,34.04,,,8.64,3.94,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПАНЧЕВО-ГРАД,92.52,,,15.44,5.99,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПЕЋ,16.56,,,10.02,1.65,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПЕЋИНЦИ,105.51,,,15.78,6.68,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПЕТРОВАЦ НА МЛАВИ,54.68,,,14.13,3.87,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПИРОТ,49.73,,,10.56,4.71,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПЛАНДИШТЕ,60.48,,,16.20,3.73,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПОЖАРЕВАЦ-ГРАД,73.02,,,15.27,4.78,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПОЖЕГА,21.29,,,11.94,1.78,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРИЈЕПОЉЕ,31.23,,,10.53,2.97,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРИБОЈ,43.28,,,11.67,3.71,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРИЗРЕН,76.52,,,19.08,4.01,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРИШТИНА-ГРАД,76.58,,,16.24,4.72,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРОКУПЉЕ,21.35,,,10.04,2.13,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,РАЖАЊ,21.89,,,12.50,1.75,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,РАШКА,68.93,,,14.57,4.73,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,РУМА,112.00,,,15.11,7.41,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СЈЕНИЦА,38.57,,,9.97,3.87,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СВИЛАЈНАЦ,56.91,,,17.23,3.30,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СВРЉИГ,89.89,,,18.05,4.98,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СЕЧАЊ,78.04,,,16.31,4.78,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СМЕДЕРЕВО-ГРАД,81.14,,,15.01,5.41,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СОКОБАЊА,15.52,,,7.86,1.97,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СОМБОР-ГРАД,109.21,,,16.40,6.66,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СРБИЦА,73.51,,,22.21,3.31,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СРБОБРАН,106.97,,,16.30,6.56,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СРЕМСКА МИТРОВИЦА-ГРАД,113.27,,,14.77,7.67,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СТАРА ПАЗОВА,88.32,,,16.46,5.37,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СУБОТИЦА-ГРАД,118.49,,,17.64,6.72,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СУРДУЛИЦА,31.28,,,9.45,3.31,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТИТЕЛ,93.14,,,17.77,5.24,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТОПОЛА,65.89,,,14.67,4.49,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТРСТЕНИК,40.36,,,12.44,3.24,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТУТИН,50.91,,,13.85,3.68,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,УБ,99.85,,,14.33,6.97,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,УЖИЦЕ-ГРАД,48.65,,,11.38,4.27,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЧАЈЕТИНА,52.07,,,10.58,4.92,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЧАЧАК-ГРАД,35.31,,,11.86,2.98,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ШАБАЦ-ГРАД,96.46,,,13.91,6.93,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ШИД,106.62,,,14.23,7.49,2,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ШТРПЦЕ,32.56,,,11.08,2.94,1,inside-grid-max,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СЕНТА,101.89,,,18.55,5.49,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЧОКА,101.25,,,20.67,4.90,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЖАБАРИ,70.45,,,15.15,4.65,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГОЛУБАЦ,24.97,,,9.86,2.53,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕЛА ЦРКВА,55.85,,,14.77,3.78,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОВАЧИЦА,74.90,,,14.93,5.02,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БОГАТИЋ,96.46,,,13.91,6.93,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЉУБОВИЈА,34.04,,,8.64,3.94,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КРУПАЊ,65.43,,,11.23,5.82,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МАЛИ ЗВОРНИК,65.43,,,11.23,5.82,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВЛАДИМИРЦИ,82.43,,,13.06,6.31,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-НОВИ БЕОГРАД,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ЗЕМУН,88.32,,,16.46,5.37,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ПАЛИЛУЛА,82.29,,,15.93,5.17,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-БАРАЈЕВО,81.50,,,12.81,6.36,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ОБРЕНОВАЦ,97.89,,,14.86,6.59,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-РАКОВИЦА,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ЧУКАРИЦА,92.51,,,15.50,5.97,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ВРАЧАР,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ЗВЕЗДАРА,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-САВСКИ ВЕНАЦ,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-СТАРИ ГРАД,84.30,,,13.94,6.05,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОГРАД-ГРОЦКА,92.52,,,15.44,5.99,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МИОНИЦА,63.32,,,12.73,4.98,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛАЈКОВАЦ,97.89,,,14.86,6.59,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ИРИГ,112.00,,,15.11,7.41,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ИНЂИЈА,88.32,,,16.46,5.37,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СУВА РЕКА,52.00,,,16.65,3.12,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ОРАХОВАЦ,52.00,,,16.65,3.12,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПРЕШЕВО,12.36,,,12.08,1.02,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТРГОВИШТЕ,22.07,,,7.41,2.98,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЦРНА ТРАВА,31.28,,,9.45,3.31,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛЕБАНЕ,72.10,,,14.40,5.01,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,РЕКОВАЦ,40.36,,,12.44,3.24,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПАРАЋИН,21.89,,,12.50,1.75,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СМЕДЕРЕВСКА ПАЛАНКА,87.19,,,13.93,6.26,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БРУС,71.01,,,14.23,4.99,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЋИЋЕВАЦ,21.89,,,12.50,1.75,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КУЛА,105.54,,,16.01,6.59,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАЧ,102.26,,,15.20,6.73,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,СРЕМСКИ КАРЛОВЦИ,105.50,,,17.02,6.20,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕОЧИН,108.74,,,15.32,7.10,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАЧКИ ПЕТРОВАЦ,110.31,,,14.90,7.40,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ТЕМЕРИН,106.48,,,18.20,5.85,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БЕЧЕЈ,100.74,,,18.38,5.48,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЗУБИН ПОТОК,86.43,,,18.39,4.70,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛЕПОСАВИЋ,68.93,,,14.57,4.73,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВИТИНА,49.22,,,18.57,2.65,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОСОВСКА КАМЕНИЦА,76.81,,,17.82,4.31,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НОВО БРДО,76.81,,,17.82,4.31,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,АРИЉЕ,21.29,,,11.94,1.78,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,УРОШЕВАЦ,49.22,,,18.57,2.65,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ШТИМЉЕ,79.90,,,16.60,4.81,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,КОСОВО ПОЉЕ,79.90,,,16.60,4.81,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГЛОГОВАЦ,79.90,,,16.60,4.81,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ОБИЛИЋ,91.24,,,21.00,4.34,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ПОДУЈЕВО,76.64,,,18.99,4.04,2,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ВРЊАЧКА БАЊА,66.03,,,12.72,5.19,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ГАЏИН ХАН,16.07,,,12.33,1.30,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ДОЉЕВАЦ,26.52,,,12.71,2.09,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НИШ-МЕДИАНА,16.07,,,12.33,1.30,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НИШ-ПАЛИЛУЛА,16.07,,,12.33,1.30,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,МЕРОШИНА,26.52,,,12.71,2.09,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НИШ-ПАНТЕЛЕЈ,16.07,,,12.33,1.30,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,НИШ-ЦРВЕНИ КРСТ,26.24,,,10.95,2.40,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,БАТОЧИНА,63.92,,,15.62,4.09,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,ЛАПОВО,63.92,,,15.62,4.09,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation
+2026-08-26T06:00:00Z,РАЧА,63.92,,,15.62,4.09,1,nearest-grid,ECMWF IFS,2026-08-25T00:00:00Z,2026-08-25T11:19:33.327453Z,HDW 500m Open-Data pressure-level approximation

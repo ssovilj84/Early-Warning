@@ -172,6 +172,29 @@
             <span id="temperature-group-label">🌡 ТЕМПЕРАТУРА</span>
             <span class="arrow">▼</span>
         </button>
+
+        <button
+            class="hazard-group-button"
+            id="fire-group-button"
+            type="button">
+            <span id="fire-group-label">🔥 ПОЖАРИ</span>
+            <span class="arrow">▼</span>
+        </button>
+
+        <button
+            class="hazard-group-button"
+            id="air-quality-group-button"
+            type="button">
+            <span id="air-quality-group-label">🌫 КВАЛИТЕТ ВАЗДУХА</span>
+            <span class="arrow">▼</span>
+        </button>
+
+        <button
+            class="hazard-group-button single-module"
+            id="uv-group-button"
+            type="button">
+            <span id="uv-group-label">☀️ UV ИНДЕКС</span>
+        </button>
     </div>
 
     <div class="hazard-subcontrols" id="storm-subcontrols">
@@ -216,6 +239,22 @@
             data-layer="max_temperature"
             id="btn-max-temperature">
         </button>
+        <button
+            class="layer-button"
+            data-layer="heat_stress"
+            id="btn-heat-stress">
+        </button>
+    </div>
+
+    <div class="hazard-subcontrols" id="fire-subcontrols">
+        <button class="layer-button" data-layer="fire_fwi" id="btn-fire-fwi"></button>
+        <button class="layer-button" data-layer="fire_hdw" id="btn-fire-hdw"></button>
+    </div>
+
+    <div class="hazard-subcontrols" id="air-quality-subcontrols">
+        <button class="layer-button" data-layer="air_pm25" id="btn-air-pm25"></button>
+        <button class="layer-button" data-layer="air_pm10" id="btn-air-pm10"></button>
+        <button class="layer-button" data-layer="air_o3" id="btn-air-o3"></button>
     </div>
 
 </div>
@@ -342,6 +381,8 @@
 
 
 <script src="js/hazards/temperature.js"></script>
+<script src="js/hazards/fire.js"></script>
+<script src="js/hazards/environment.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

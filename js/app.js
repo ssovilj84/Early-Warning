@@ -96,6 +96,39 @@ const HAZARD_MODULES = {
             temperatureRiskLevel(data),
             heatStressRiskLevel(data)
         )
+    },
+
+    fire: {
+        labelElementId: "fire-group-label",
+        parameters: ["fire_fwi", "fire_hdw"],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.fire_available
+        ),
+        riskLevel: data => Math.max(
+            fireFwiRiskLevel(data),
+            fireHdwRiskLevel(data)
+        )
+    },
+
+    air_quality: {
+        labelElementId: "air-quality-group-label",
+        parameters: ["air_pm25", "air_pm10", "air_o3"],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.air_quality_available
+        ),
+        riskLevel: data => airQualityRiskLevel(data)
+    },
+
+    uv: {
+        labelElementId: "uv-group-label",
+        parameters: [],
+        available: () => Boolean(
+            currentModelData
+            && currentModelData.uv_available
+        ),
+        riskLevel: data => uvRiskLevel(data)
     }
 };
 
@@ -116,6 +149,51 @@ function moduleRiskLevel(data, moduleKey) {
 function moduleAvailable(moduleKey) {
     const config = HAZARD_MODULES[moduleKey];
     return Boolean(config && config.available());
+}
+
+function moduleDataAvailable(data, moduleKey) {
+    if (!data) return false;
+
+    if (moduleKey === "temperature") {
+        return Boolean(data.temperature_multimodel || data.heat_stress_multimodel);
+    }
+
+    if (moduleKey === "fire") {
+        return Boolean(data.fire_fwi_available || data.fire_hdw_available);
+    }
+
+    if (moduleKey === "air_quality") {
+        return Boolean(data.air_quality_available);
+    }
+
+    if (moduleKey === "uv") {
+        return Boolean(data.uv_available);
+    }
+
+    if (moduleKey === "storm") {
+        return Boolean(data.storms_multimodel);
+    }
+
+    if (moduleKey === "wind") {
+        return Boolean(
+            currentModelData?.wind_available
+            && (
+                String(data.wind_risk_level || "").trim()
+                || Number.isFinite(Number(data.wind_10))
+                || Number.isFinite(Number(data.wind_17))
+                || Number.isFinite(Number(data.wind_24))
+                || Number.isFinite(Number(data.wind_28))
+            )
+        );
+    }
+
+    return false;
+}
+
+function anyModuleDataAvailable(data) {
+    return Object.keys(HAZARD_MODULES).some(
+        moduleKey => moduleDataAvailable(data, moduleKey)
+    );
 }
 
 let currentTimeIndex = 0;
@@ -252,6 +330,20 @@ const translations = {
         temperatureGroup: "🌡 ТЕМПЕРАТУРА",
         maxTemperature: "🌡 Максимална температура",
         heatStress: "🔥 Топлотни стрес",
+        fireGroup: "🔥 ПОЖАРИ",
+        fireDanger: "🔥 Пожарна опасност",
+        fireSpread: "💨 Потенцијал брзог ширења",
+        fireCategory: "Категорија пожарне опасности",
+        fireHdwCategory: "Категорија атмосферског сигнала",
+        airQualityGroup: "🌫 КВАЛИТЕТ ВАЗДУХА",
+        airPm25: "PM2.5",
+        airPm10: "PM10",
+        airOzone: "O₃",
+        airEuropeanAqi: "Европски индекс квалитета ваздуха",
+        airDominant: "Доминантни загађивач",
+        airDust: "Минерална прашина",
+        uvGroup: "☀️ UV ИНДЕКС",
+        uvIndex: "UV индекс",
         temperatureCategory: "Категорија",
         mostLikelyCategory: "Највероватнија категорија",
         warmestPeriod: "Најтоплији део дана",
@@ -411,6 +503,20 @@ const translations = {
         temperatureGroup: "🌡 TEMPERATURE",
         maxTemperature: "🌡 Maximum temperature",
         heatStress: "🔥 Heat stress",
+        fireGroup: "🔥 FIRES",
+        fireDanger: "🔥 Fire danger",
+        fireSpread: "💨 Rapid-spread potential",
+        fireCategory: "Fire-danger category",
+        fireHdwCategory: "Atmospheric-signal category",
+        airQualityGroup: "🌫 AIR QUALITY",
+        airPm25: "PM2.5",
+        airPm10: "PM10",
+        airOzone: "O₃",
+        airEuropeanAqi: "European Air Quality Index",
+        airDominant: "Dominant pollutant",
+        airDust: "Mineral dust",
+        uvGroup: "☀️ UV INDEX",
+        uvIndex: "UV index",
         temperatureCategory: "Category",
         mostLikelyCategory: "Most likely category",
         warmestPeriod: "Warmest part of day",
@@ -693,6 +799,114 @@ function formatNumber(
 /* Convert CSV numeric text to number while preserving missing values.
    Number("") is 0 in JavaScript, which would incorrectly display a
    missing model (e.g. ICON at an unavailable valid time) as 0%. */
+
+/* ============================================================
+   USER-FIRST UX HELPERS
+   ------------------------------------------------------------
+   These helpers change presentation only. Risk levels still come from the
+   existing hazard/module functions and the timeline remains authoritative.
+   ============================================================ */
+
+function riskLevelLabel(level) {
+    const safe = Math.max(0, Math.min(4, Number(level) || 0));
+    const sr = [
+        "без значајног ризика",
+        "низак ризик",
+        "умерен ризик",
+        "висок ризик",
+        "веома висок ризик"
+    ];
+    const en = [
+        "no significant risk",
+        "low risk",
+        "moderate risk",
+        "high risk",
+        "very high risk"
+    ];
+    return (currentLanguage === "sr" ? sr : en)[safe];
+}
+
+function riskSummaryHtml({
+    title,
+    level,
+    category,
+    value = "",
+    impact = "",
+    recommendation = "",
+    meta = "",
+    badge = "",
+    available = true
+}) {
+    if (!available) {
+        return `
+            <div class="risk-summary-card risk-unavailable">
+                <div class="risk-eyebrow">${title || ""}</div>
+                <div class="risk-category">${translations[currentLanguage].notAvailableForTime}</div>
+            </div>
+        `;
+    }
+
+    const safeLevel = Math.max(0, Math.min(4, Number(level) || 0));
+    return `
+        <div class="risk-summary-card risk-level-${safeLevel}">
+            <div class="risk-summary-top">
+                <div>
+                    <div class="risk-eyebrow">${title || ""}</div>
+                    <div class="risk-category">${category || riskLevelLabel(safeLevel)}</div>
+                </div>
+                <span class="risk-badge">${badge || riskLevelLabel(safeLevel)}</span>
+            </div>
+            ${value ? `<div class="risk-primary-value">${value}</div>` : ""}
+            ${meta ? `<div class="risk-meta">${meta}</div>` : ""}
+            ${(impact || recommendation) ? `
+                <div class="impact-action-grid">
+                    ${impact ? `
+                        <div class="impact-action-card">
+                            <span class="impact-action-title">${translations[currentLanguage].impacts}</span>
+                            ${impact}
+                        </div>` : ""}
+                    ${recommendation ? `
+                        <div class="impact-action-card">
+                            <span class="impact-action-title">${translations[currentLanguage].recommendations}</span>
+                            ${recommendation}
+                        </div>` : ""}
+                </div>` : ""}
+        </div>
+    `;
+}
+
+function expertDetailsHtml(content, label = null) {
+    if (!content) return "";
+    const text = label || (currentLanguage === "sr" ? "Стручни детаљи" : "Technical details");
+    return `
+        <details class="expert-details">
+            <summary>${text}</summary>
+            <div class="expert-details-body">${content}</div>
+        </details>
+    `;
+}
+
+function legendUnavailableHtml() {
+    return `
+        <div class="legend-row">
+            <span class="legend-box legend-unavailable"></span>
+            ${currentLanguage === "sr" ? "нема података / није доступно" : "no data / unavailable"}
+        </div>
+    `;
+}
+
+function setActionButtonContent(elementId, icon, label) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    const clean = String(label || "")
+        .replace(/^📍\s*/u, "")
+        .replace(/^📄\s*/u, "")
+        .replace(/^↗\s*/u, "");
+    element.innerHTML = `<span class="action-icon" aria-hidden="true">${icon}</span><span class="action-label">${clean}</span>`;
+    element.title = clean;
+    element.setAttribute("aria-label", clean);
+}
+
 function optionalNumber(value) {
     if (
         value === null
@@ -1179,7 +1393,10 @@ function updateHazardAvailabilityLabels() {
     const moduleLabels = {
         storm: t.stormGroup,
         wind: t.windGroup,
-        temperature: t.temperatureGroup
+        temperature: t.temperatureGroup,
+        fire: t.fireGroup,
+        air_quality: t.airQualityGroup,
+        uv: t.uvGroup
     };
 
     Object.entries(HAZARD_MODULES).forEach(
@@ -1284,13 +1501,21 @@ async function buildTimelineSlots() {
     const allTemperatureDays =
         await loadTemperatureDailyRows();
     const allHeatStressDays = await loadHeatStressDailyRows();
+    const allFireFwiDays =
+        typeof loadFireFwiDailyRows === "function"
+        ? await loadFireFwiDailyRows()
+        : new Map();
 
     const todayKey =
         localTodayKey();
 
     const futureTemperatureDates =
         Array.from(
-            new Set([...allTemperatureDays.keys(), ...allHeatStressDays.keys()])
+            new Set([
+                ...allTemperatureDays.keys(),
+                ...allHeatStressDays.keys(),
+                ...allFireFwiDays.keys()
+            ])
         )
         .filter(dateKey => dateKey >= todayKey)
         .sort();
@@ -1416,6 +1641,8 @@ async function dataForTimelineSlot(index) {
            the same overlay logic as the main map. */
         await applyTemperatureOverlay(data);
         await applyHeatStressTimelineOverlay(data);
+        await applyFireOverlay(data);
+        await applyEnvironmentOverlay(data);
 
         data.temperature_available =
             Boolean(
@@ -1441,11 +1668,18 @@ async function dataForTimelineSlot(index) {
             wind_available: false,
             temperature_multimodel: false,
             temperature_available: false,
-            heat_stress_multimodel: false
+            heat_stress_multimodel: false,
+            fire_fwi_available: false,
+            fire_hdw_available: false,
+            fire_available: false,
+            air_quality_available: false,
+            uv_available: false
         };
 
         await applyTemperatureOverlay(data);
         await applyHeatStressTimelineOverlay(data);
+        await applyFireOverlay(data);
+        await applyEnvironmentOverlay(data);
 
         data.temperature_available =
             Boolean(
@@ -1805,6 +2039,24 @@ function overallPopupHazardsHtml(data) {
                     ? translations[currentLanguage].available
                     : translations[currentLanguage].unavailable}</b>
             </div>
+            <div class="popup-row">
+                ${translations[currentLanguage].fireGroup}:
+                <b>${availability.fire
+                    ? translations[currentLanguage].available
+                    : translations[currentLanguage].unavailable}</b>
+            </div>
+            <div class="popup-row">
+                ${translations[currentLanguage].airQualityGroup}:
+                <b>${availability.air_quality
+                    ? translations[currentLanguage].available
+                    : translations[currentLanguage].unavailable}</b>
+            </div>
+            <div class="popup-row">
+                ${translations[currentLanguage].uvGroup}:
+                <b>${availability.uv
+                    ? translations[currentLanguage].available
+                    : translations[currentLanguage].unavailable}</b>
+            </div>
         </div>
     `;
 
@@ -1991,6 +2243,73 @@ function overallPopupHazardsHtml(data) {
         `;
     }
 
+
+    /* --------------------------------------------------------
+       FIRES: FWI is the daily background danger; HDW is the exact
+       3-hour atmospheric signal. Show only yellow-or-higher components.
+       -------------------------------------------------------- */
+
+    if (
+        data.fire_fwi_available
+        && fireFwiRiskLevel(data) >= 1
+    ) {
+        significantCount += 1;
+        const ir = fireFwiImpactRecommendation(data);
+        html += `
+            <div class="popup-section">${t.fireDanger}</div>
+            <div class="popup-row">${fireFwiValueLabel(data)}</div>
+            <div class="popup-row">${t.fireCategory}: <b>${translatedFireFwiCategory(data)}</b></div>
+            <div class="popup-risk-box">
+                <div class="popup-section">${t.impacts}</div><div>${ir.impact}</div>
+                <div class="popup-section">${t.recommendations}</div><div>${ir.recommendation}</div>
+            </div>`;
+    }
+
+    if (
+        data.fire_hdw_available
+        && fireHdwRiskLevel(data) >= 1
+    ) {
+        significantCount += 1;
+        const ir = fireHdwImpactRecommendation(data);
+        html += `
+            <div class="popup-section">${t.fireSpread}</div>
+            <div class="popup-row">HDW: <b>${formatNumber(data.fire_hdw, 1)}</b></div>
+            <div class="popup-row">${t.fireHdwCategory}: <b>${translatedFireHdwCategory(data)}</b></div>
+            <div class="popup-row">${currentLanguage === "sr" ? "Климатолошки перцентил" : "Climatological percentile"}: <b>${Number.isFinite(Number(data.fire_hdw_percentile)) ? formatNumber(data.fire_hdw_percentile, 0) + "." : "—"}</b></div>
+            <div class="popup-risk-box">
+                <div class="popup-section">${t.impacts}</div><div>${ir.impact}</div>
+                <div class="popup-section">${t.recommendations}</div><div>${ir.recommendation}</div>
+            </div>`;
+    }
+
+    /* --------------------------------------------------------
+       AIR QUALITY + UV: show yellow-or-higher module signals.
+       -------------------------------------------------------- */
+
+    if (data.air_quality_available && airQualityRiskLevel(data) >= 1) {
+        significantCount += 1;
+        const ir = airQualityImpactRecommendation(data);
+        html += `
+            <div class="popup-section">${t.airQualityGroup}</div>
+            <div class="popup-row">${t.airEuropeanAqi}: <b>${formatNumber(data.european_aqi, 0)}</b></div>
+            <div class="popup-row">${t.airDominant}: <b>${translatedPollutantName(data.air_dominant_pollutant)}</b></div>
+            <div class="popup-risk-box">
+                <div class="popup-section">${t.impacts}</div><div>${ir.impact}</div>
+                <div class="popup-section">${t.recommendations}</div><div>${ir.recommendation}</div>
+            </div>`;
+    }
+
+    if (data.uv_available && uvRiskLevel(data) >= 1) {
+        significantCount += 1;
+        const ir = uvImpactRecommendation(data);
+        html += `
+            <div class="popup-section">${t.uvGroup}</div>
+            <div class="popup-row">${t.uvIndex}: <b>${formatNumber(data.uv_index, 1)}</b> — ${translatedUvCategory(data)}</div>
+            <div class="popup-risk-box">
+                <div class="popup-section">${t.impacts}</div><div>${ir.impact}</div>
+                <div class="popup-section">${t.recommendations}</div><div>${ir.recommendation}</div>
+            </div>`;
+    }
 
     /* --------------------------------------------------------
        WIND: show the group only when final wind risk is yellow
@@ -2239,7 +2558,11 @@ function overallRiskLevel(data) {
         stormRiskLevel(data),
         windRiskLevel(data),
         temperatureRiskLevel(data),
-        heatStressRiskLevel(data)
+        heatStressRiskLevel(data),
+        fireFwiRiskLevel(data),
+        fireHdwRiskLevel(data),
+        airQualityRiskLevel(data),
+        uvRiskLevel(data)
     );
 }
 
@@ -2276,22 +2599,22 @@ function styleFeature(
         fillColor =
             Object.values(available).some(Boolean)
             ? (
-                data
+                data && anyModuleDataAvailable(data)
                 ? overallRiskColor(overallRiskLevel(data))
-                : "#cccccc"
+                : "#c7c7c7"
             )
             : "#c7c7c7";
 
     } else if (currentHazard === "module_risk") {
         fillColor =
-            data
+            data && moduleDataAvailable(data, currentModule)
             ? overallRiskColor(
                 moduleRiskLevel(
                     data,
                     currentModule
                 )
             )
-            : "#cccccc";
+            : "#c7c7c7";
 
     } else if (currentHazard === "wind_risk_level") {
         const windRiskColors = {green:"#a6d96a", yellow:"#ffffbf", orange:"#fdae61", red:"#d7191c"};
@@ -2319,6 +2642,30 @@ function styleFeature(
                 && data.heat_stress_multimodel
             )
             ? stormRiskColor(data.heat_stress_color)
+            : "#c7c7c7";
+    } else if (
+        currentHazard === "fire_fwi"
+    ) {
+        fillColor =
+            data && data.fire_fwi_available
+            ? fireColorHex(data.fire_fwi_color)
+            : "#c7c7c7";
+    } else if (
+        currentHazard === "fire_hdw"
+    ) {
+        fillColor =
+            data && data.fire_hdw_available
+            ? fireColorHex(data.fire_hdw_color)
+            : "#c7c7c7";
+    } else if (
+        ["air_pm25", "air_pm10", "air_o3"].includes(currentHazard)
+    ) {
+        fillColor = airPollutantColorHex(data, currentHazard);
+    } else if (
+        currentHazard === "uv_index"
+    ) {
+        fillColor = data && data.uv_available
+            ? environmentColorHex(data.uv_color)
             : "#c7c7c7";
     } else if (
         ["thunder", "hail", "large_hail", "very_large_hail"].includes(currentHazard)
@@ -2367,21 +2714,150 @@ function modulePopupContent(data, name, moduleKey) {
     `;
 
     if (moduleKey === "temperature") {
-        const tmaxBlock =
-            data.temperature_multimodel
-            ? temperatureDetailHtml(data)
-            : "";
+        const components = [];
 
-        const stressBlock =
-            data.heat_stress_multimodel
-            ? heatStressDetailHtml(data)
-            : "";
+        if (data.temperature_multimodel) {
+            const ir = temperatureImpactRecommendation(data);
+            components.push({
+                key: "max_temperature",
+                label: t.maxTemperature,
+                level: temperatureRiskLevel(data),
+                category: translatedTemperatureCategory(data),
+                value: `${t.multimodelTmax}: <b>${formatNumber(data.max_temperature, 1)} °C</b>`,
+                impact: ir.impact,
+                recommendation: ir.recommendation
+            });
+        }
 
-        return header + `
-            <div class="popup-section">${t.temperatureGroup}</div>
-            ${tmaxBlock}
-            ${stressBlock}
-        `;
+        if (data.heat_stress_multimodel) {
+            const ir = thermalStressImpactRecommendation(data);
+            components.push({
+                key: "heat_stress",
+                label: t.heatStress,
+                level: heatStressRiskLevel(data),
+                category: translatedHeatStressCategory(data),
+                value: data.heat_stress_mode === "NIGHT"
+                    ? `${currentLanguage === "sr" ? "Ноћни минимум" : "Overnight minimum"}: <b>${formatNumber(data.heat_stress_night_tmin, 1)} °C</b>`
+                    : `${currentLanguage === "sr" ? "Топлотни индекс / сигнал" : "Heat index / signal"}: <b>${formatNumber(data.heat_stress, 1)} °C</b>`,
+                impact: ir.impact,
+                recommendation: ir.recommendation
+            });
+        }
+
+        if (!components.length) return header + riskSummaryHtml({ title: t.temperatureGroup, available: false });
+
+        const strongest = components.reduce((best, item) =>
+            !best || item.level > best.level ? item : best, null);
+
+        const technical = [
+            data.temperature_multimodel ? temperatureDetailHtml(data, { technicalOnly: true }) : "",
+            data.heat_stress_multimodel ? heatStressDetailHtml(data, { technicalOnly: true }) : ""
+        ].join("");
+
+        return header + riskSummaryHtml({
+            title: t.temperatureGroup,
+            level: strongest.level,
+            category: strongest.category,
+            value: strongest.value,
+            impact: strongest.impact,
+            recommendation: strongest.recommendation,
+            meta: `${currentLanguage === "sr" ? "Доминантни параметар" : "Dominant parameter"}: ${strongest.label}`
+        }) + expertDetailsHtml(
+            technical,
+            currentLanguage === "sr" ? "Параметри и стручни детаљи" : "Parameters and technical details"
+        );
+    }
+
+    if (moduleKey === "fire") {
+        const components = [];
+
+        if (data.fire_fwi_available) {
+            const ir = fireFwiImpactRecommendation(data);
+            components.push({
+                key: "fire_fwi",
+                label: t.fireDanger,
+                level: fireFwiRiskLevel(data),
+                category: translatedFireFwiCategory(data),
+                value: fireFwiValueLabel(data),
+                impact: ir.impact,
+                recommendation: ir.recommendation
+            });
+        }
+
+        if (data.fire_hdw_available) {
+            const ir = fireHdwImpactRecommendation(data);
+            components.push({
+                key: "fire_hdw",
+                label: t.fireSpread,
+                level: fireHdwRiskLevel(data),
+                category: translatedFireHdwCategory(data),
+                value: `HDW <b>${formatNumber(data.fire_hdw, 1)}</b>${Number.isFinite(Number(data.fire_hdw_percentile)) ? ` · P${formatNumber(data.fire_hdw_percentile, 0)}` : ""}`,
+                impact: ir.impact,
+                recommendation: ir.recommendation
+            });
+        }
+
+        if (!components.length) return header + riskSummaryHtml({ title: t.fireGroup, available: false });
+
+        const strongest = components.reduce((best, item) =>
+            !best || item.level > best.level ? item : best, null);
+
+        const technical = [
+            data.fire_fwi_available ? fireFwiDetailHtml(data, { technicalOnly: true }) : "",
+            data.fire_hdw_available ? fireHdwDetailHtml(data, { technicalOnly: true }) : ""
+        ].join("");
+
+        return header + riskSummaryHtml({
+            title: t.fireGroup,
+            level: strongest.level,
+            category: strongest.category,
+            value: strongest.value,
+            impact: strongest.impact,
+            recommendation: strongest.recommendation,
+            meta: `${currentLanguage === "sr" ? "Доминантна компонента" : "Dominant component"}: ${strongest.label}`
+        }) + expertDetailsHtml(
+            technical,
+            currentLanguage === "sr" ? "FWI / HDW и стручни детаљи" : "FWI / HDW and technical details"
+        );
+    }
+
+    if (moduleKey === "air_quality") {
+        if (!data.air_quality_available) {
+            return header + riskSummaryHtml({ title: t.airQualityGroup, available: false });
+        }
+        const ir = airQualityImpactRecommendation(data);
+        return header + riskSummaryHtml({
+            title: t.airQualityGroup,
+            level: airQualityRiskLevel(data),
+            category: translatedAqiBand(data),
+            badge: translatedAqiBand(data),
+            value: `${t.airEuropeanAqi}: <b>${formatNumber(data.european_aqi, 0)}</b>`,
+            impact: ir.impact,
+            recommendation: ir.recommendation,
+            meta: `${t.airDominant}: ${translatedPollutantName(data.air_dominant_pollutant)}`
+        }) + expertDetailsHtml(
+            airQualityDetailHtml(data, { technicalOnly: true }),
+            currentLanguage === "sr" ? "Загађивачи и стручни детаљи" : "Pollutants and technical details"
+        );
+    }
+
+    if (moduleKey === "uv") {
+        if (!data.uv_available) {
+            return header + riskSummaryHtml({ title: t.uvGroup, available: false });
+        }
+        const ir = uvImpactRecommendation(data);
+        return header + riskSummaryHtml({
+            title: t.uvGroup,
+            level: uvRiskLevel(data),
+            category: translatedUvCategory(data),
+            badge: translatedUvCategory(data),
+            value: `${t.uvIndex}: <b>${formatNumber(data.uv_index, 1)}</b>`,
+            impact: ir.impact,
+            recommendation: ir.recommendation
+        }) + expertDetailsHtml(
+            uvDetailHtml(data, { technicalOnly: true }),
+            currentLanguage === "sr" ? "Стручни детаљи UV индекса" : "UV index technical details"
+        );
     }
 
     if (moduleKey === "wind") {
@@ -2584,6 +3060,50 @@ function popupContent(
                 })()}
             </div>
             ${heatStressDetailHtml(data)}
+        `;
+    }
+
+    if (currentHazard === "fire_fwi") {
+        return `
+            <div class="popup-title">${name}</div>
+            <div class="popup-valid">
+                ${currentLanguage === "sr" ? "Дневна прогноза" : "Daily forecast"}:
+                ${data.fire_fwi_date || localDateKeyBelgrade(currentModelData?.valid_time) || "—"}
+            </div>
+            ${fireFwiDetailHtml(data)}
+        `;
+    }
+
+    if (currentHazard === "fire_hdw") {
+        return `
+            <div class="popup-title">${name}</div>
+            <div class="popup-valid">
+                ${t.valid}: ${formatValidTime(data.fire_hdw_valid_time || currentModelData.valid_time)}
+                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
+            </div>
+            ${fireHdwDetailHtml(data)}
+        `;
+    }
+
+    if (["air_pm25", "air_pm10", "air_o3"].includes(currentHazard)) {
+        return `
+            <div class="popup-title">${name}</div>
+            <div class="popup-valid">
+                ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
+                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
+            </div>
+            ${airPollutantDetailHtml(data, currentHazard)}
+        `;
+    }
+
+    if (currentHazard === "uv_index") {
+        return `
+            <div class="popup-title">${name}</div>
+            <div class="popup-valid">
+                ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
+                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
+            </div>
+            ${uvDetailHtml(data)}
         `;
     }
 
@@ -2855,6 +3375,10 @@ async function loadForecast(
         );
 
         await applyHeatStressTimelineOverlay(data);
+        await applyFireOverlay(data);
+        await applyEnvironmentOverlay(data);
+
+        data.fire_available = Boolean(data.fire_fwi_available || data.fire_hdw_available);
 
         currentModelData =
             data;
@@ -3444,6 +3968,9 @@ function openHazardGroup(group) {
     const stormOpen = group === "storm";
     const windOpen = group === "wind";
     const temperatureOpen = group === "temperature";
+    const fireOpen = group === "fire";
+    const airQualityOpen = group === "air_quality";
+    const uvOpen = group === "uv";
 
     stormSubcontrols.classList.toggle("open", stormOpen);
     stormGroupButton.classList.toggle("open", stormOpen);
@@ -3453,6 +3980,14 @@ function openHazardGroup(group) {
 
     temperatureSubcontrols.classList.toggle("open", temperatureOpen);
     temperatureGroupButton.classList.toggle("open", temperatureOpen);
+
+    fireSubcontrols.classList.toggle("open", fireOpen);
+    fireGroupButton.classList.toggle("open", fireOpen);
+
+    airQualitySubcontrols.classList.toggle("open", airQualityOpen);
+    airQualityGroupButton.classList.toggle("open", airQualityOpen);
+
+    uvGroupButton.classList.toggle("open", uvOpen);
 
     /* Architectural rule:
        clicking the module shows the strongest risk INSIDE that module.
@@ -3534,6 +4069,52 @@ temperatureGroupButton.addEventListener(
     }
 );
 
+const fireGroupButton = document.getElementById("fire-group-button");
+const fireSubcontrols = document.getElementById("fire-subcontrols");
+
+fireGroupButton.addEventListener(
+    "click",
+    () => {
+        if (fireSubcontrols.classList.contains("open")) {
+            fireSubcontrols.classList.remove("open");
+            fireGroupButton.classList.remove("open");
+            setOverallRiskView();
+        } else {
+            openHazardGroup("fire");
+        }
+    }
+);
+
+const airQualityGroupButton = document.getElementById("air-quality-group-button");
+const airQualitySubcontrols = document.getElementById("air-quality-subcontrols");
+
+airQualityGroupButton.addEventListener(
+    "click",
+    () => {
+        if (airQualitySubcontrols.classList.contains("open")) {
+            airQualitySubcontrols.classList.remove("open");
+            airQualityGroupButton.classList.remove("open");
+            setOverallRiskView();
+        } else {
+            openHazardGroup("air_quality");
+        }
+    }
+);
+
+const uvGroupButton = document.getElementById("uv-group-button");
+
+uvGroupButton.addEventListener(
+    "click",
+    () => {
+        if (currentModule === "uv" && currentHazard === "module_risk") {
+            uvGroupButton.classList.remove("open");
+            setOverallRiskView();
+        } else {
+            openHazardGroup("uv");
+        }
+    }
+);
+
 
 /* ============================================================
    FIVE-DAY MUNICIPALITY OVERVIEW
@@ -3580,6 +4161,8 @@ async function loadAllForecasts() {
                 );
 
                 await applyHeatStressOverlay(data);
+                await applyFireOverlay(data);
+        await applyEnvironmentOverlay(data);
 
                 data.wind_available = true;
 
@@ -3594,6 +4177,10 @@ async function loadAllForecasts() {
                         (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
                         || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
                     );
+
+                data.fire_available = Boolean(
+                    data.fire_fwi_available || data.fire_hdw_available
+                );
 
                 return data;
             }
@@ -3849,6 +4436,22 @@ function overviewDayRisk(forecasts, municipalityID, dateKey) {
                     municipality.heat_stress_color
                 )
             );
+        }
+
+        if (municipality.fire_fwi_available) {
+            strongest = Math.max(strongest, fireFwiRiskLevel(municipality));
+        }
+
+        if (municipality.fire_hdw_available) {
+            strongest = Math.max(strongest, fireHdwRiskLevel(municipality));
+        }
+
+        if (municipality.air_quality_available) {
+            strongest = Math.max(strongest, airQualityRiskLevel(municipality));
+        }
+
+        if (municipality.uv_available) {
+            strongest = Math.max(strongest, uvRiskLevel(municipality));
         }
     });
 
@@ -4549,10 +5152,31 @@ function renderOverview(forecasts, feature) {
             municipalityID
         );
 
+    const fireHtml =
+        typeof fireOverviewGroupHtml === "function"
+        ? fireOverviewGroupHtml(
+            visibleForecasts,
+            municipalityID
+        )
+        : "";
+
+    const airQualityHtml =
+        typeof airQualityOverviewGroupHtml === "function"
+        ? airQualityOverviewGroupHtml(visibleForecasts, municipalityID)
+        : "";
+
+    const uvHtml =
+        typeof uvOverviewGroupHtml === "function"
+        ? uvOverviewGroupHtml(visibleForecasts, municipalityID)
+        : "";
+
     const groupsHtml =
         stormHtml
         + windHtml
         + temperatureHtml
+        + fireHtml
+        + airQualityHtml
+        + uvHtml
         || `
             <div class="overview-risk">
                 <div class="overview-muted">
@@ -5800,26 +6424,9 @@ function updateLanguage() {
     searchInput.placeholder =
         t.search;
 
-    document
-        .getElementById(
-            "location-button"
-        )
-        .textContent =
-            t.location;
-
-    document
-        .getElementById(
-            "pdf-button"
-        )
-        .textContent =
-            t.pdf;
-
-    document
-        .getElementById(
-            "share-button"
-        )
-        .textContent =
-            t.share;
+    setActionButtonContent("location-button", "📍", t.location);
+    setActionButtonContent("pdf-button", "📄", t.pdf);
+    setActionButtonContent("share-button", "↗", t.share);
 
     document
         .getElementById(
@@ -5831,6 +6438,14 @@ function updateLanguage() {
     document.getElementById("wind-group-label").textContent = t.windGroup;
     document.getElementById("temperature-group-label").textContent = t.temperatureGroup;
     document.getElementById("btn-max-temperature").textContent = t.maxTemperature;
+    document.getElementById("fire-group-label").textContent = t.fireGroup;
+    document.getElementById("btn-fire-fwi").textContent = t.fireDanger;
+    document.getElementById("btn-fire-hdw").textContent = t.fireSpread;
+    document.getElementById("air-quality-group-label").textContent = t.airQualityGroup;
+    document.getElementById("btn-air-pm25").textContent = t.airPm25;
+    document.getElementById("btn-air-pm10").textContent = t.airPm10;
+    document.getElementById("btn-air-o3").textContent = t.airOzone;
+    document.getElementById("uv-group-label").textContent = t.uvGroup;
     const heatBtnLang = document.getElementById("btn-heat-stress");
     if (heatBtnLang) heatBtnLang.textContent = t.heatStress;
     document.getElementById("btn-wind-risk").textContent = t.windOverall;
@@ -6046,6 +6661,7 @@ function updateLegend(
                     ${label}
                 </div>
             `).join("")}
+            ${legendUnavailableHtml()}
         `;
         return;
     }
@@ -6056,7 +6672,25 @@ function updateLegend(
             ? ["<27 °C — без значајног топлотног стреса", "27–32 °C — повишен", "32–41 °C — изражен", "41–54 °C — веома висок", "≥54 °C — екстреман"]
             : ["<27 °C — no significant heat stress", "27–32 °C — elevated", "32–41 °C — marked", "41–54 °C — very high", "≥54 °C — extreme"];
         const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
-        element.innerHTML = `<div class="legend-title">${translations[currentLanguage].heatStress}</div>${labels.map((label,i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}`;
+        element.innerHTML = `<div class="legend-title">${translations[currentLanguage].heatStress}</div>${labels.map((label,i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}${legendUnavailableHtml()}`;
+        return;
+    }
+
+    if (currentHazard === "fire_fwi") {
+        const labels = currentLanguage === "sr"
+            ? ["<11,2 — ниска", "11,2–21,3 — умерена", "21,3–38 — висока", "38–50 — веома висока", "≥50 — екстремна"]
+            : ["<11.2 — low", "11.2–21.3 — moderate", "21.3–38 — high", "38–50 — very high", "≥50 — extreme"];
+        const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        element.innerHTML = `<div class="legend-title">${t.fireDanger}</div>${labels.map((label,i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}${legendUnavailableHtml()}`;
+        return;
+    }
+
+    if (currentHazard === "fire_hdw") {
+        const labels = currentLanguage === "sr"
+            ? ["<P75 — без значајно повишеног сигнала", "P75–P90 — повишен", "P90–P95 — изражен", "P95–P99 — веома висок", "≥P99 — екстреман"]
+            : ["<P75 — no significantly elevated signal", "P75–P90 — elevated", "P90–P95 — marked", "P95–P99 — very high", "≥P99 — extreme"];
+        const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        element.innerHTML = `<div class="legend-title">${t.fireSpread}</div>${labels.map((label,i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}${legendUnavailableHtml()}<div class="popup-note">${currentLanguage === "sr" ? "Развојна MeteoRisk перцентилска калибрација." : "Developmental MeteoRisk percentile calibration."}</div>`;
         return;
     }
 
@@ -6089,6 +6723,39 @@ function updateLegend(
                     ${label}
                 </div>
             `).join("")}
+            ${legendUnavailableHtml()}
+        `;
+        return;
+    }
+
+    if (
+        ["air_pm25", "air_pm10", "air_o3"].includes(currentHazard)
+        || (currentHazard === "module_risk" && currentModule === "air_quality")
+    ) {
+        const labels = currentLanguage === "sr"
+            ? ["0–20 — добар", "21–40 — прихватљив", "41–60 — умерен", "61–80 — лош", "81–100 — веома лош", ">100 — изузетно лош"]
+            : ["0–20 — good", "21–40 — fair", "41–60 — moderate", "61–80 — poor", "81–100 — very poor", ">100 — extremely poor"];
+        const colors = ["#a6d96a", "#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        element.innerHTML = `
+            <div class="legend-title">${t.airQualityGroup}</div>
+            ${labels.map((label, i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}
+            ${legendUnavailableHtml()}
+        `;
+        return;
+    }
+
+    if (
+        currentHazard === "uv_index"
+        || (currentHazard === "module_risk" && currentModule === "uv")
+    ) {
+        const labels = currentLanguage === "sr"
+            ? ["0–2 — низак", "3–5 — умерен", "6–7 — висок", "8–10 — веома висок", "≥11 — екстреман"]
+            : ["0–2 — low", "3–5 — moderate", "6–7 — high", "8–10 — very high", "≥11 — extreme"];
+        const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
+        element.innerHTML = `
+            <div class="legend-title">${t.uvGroup}</div>
+            ${labels.map((label, i) => `<div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>`).join("")}
+            ${legendUnavailableHtml()}
         `;
         return;
     }
@@ -6108,6 +6775,7 @@ function updateLegend(
             ${labels.slice(0, count).map((label, i) => `
                 <div class="legend-row"><span class="legend-box" style="background:${colors[i]}"></span>${label}</div>
             `).join("")}
+            ${legendUnavailableHtml()}
         `;
         return;
     }
@@ -6119,6 +6787,7 @@ function updateLegend(
         <div class="legend-row"><span class="legend-box" style="background:#fdae61"></span>20–30%</div>
         <div class="legend-row"><span class="legend-box" style="background:#d7191c"></span>30–50%</div>
         <div class="legend-row"><span class="legend-box" style="background:#7b3294"></span>≥ 50%</div>
+        ${legendUnavailableHtml()}
     `;
 }
 

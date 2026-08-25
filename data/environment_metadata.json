@@ -1,0 +1,10 @@
+{
+  "project": "MeteoRisk",
+  "source": "CAMS Europe + CAMS Global via Open-Meteo Air Quality API",
+  "processed_utc": "2026-08-25T11:04:17.070791+00:00",
+  "air_quality": "web\\data\\air_quality\\air_quality_3h.csv",
+  "uv": "web\\data\\uv\\uv_3h.csv",
+  "air_quality_rule": "Worst European AQI pollutant sub-index determines module risk. EEA Good+Fair -> GREEN, Moderate -> YELLOW, Poor -> ORANGE, Very poor -> RED, Extremely poor -> PURPLE.",
+  "uv_rule": "Maximum hourly UVI in each 3-hour slot; <3 GREEN, <6 YELLOW, <8 ORANGE, <11 RED, >=11 PURPLE.",
+  "dust_rule": "Dust is diagnostic/context only in v1 and does not independently raise the air-quality risk."
+}
