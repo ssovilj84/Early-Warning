@@ -69,6 +69,16 @@
 
 <body>
 
+<!-- METEORISK M1 APP LOADER -->
+<div id="app-loading-overlay" class="app-loading-overlay" role="status" aria-live="polite" aria-busy="true">
+    <div class="app-loading-card">
+        <div class="app-loading-brand">MeteoRisk</div>
+        <div class="app-loading-spinner" aria-hidden="true"></div>
+        <div id="app-loading-text" class="app-loading-text">Учитавање најновијих података…</div>
+        <div class="app-loading-subtext">Карта · ризици · временска линија</div>
+    </div>
+</div>
+
 <div class="header">
 
     <div class="language-switch">
@@ -312,6 +322,22 @@
 
     </div>
 
+</div>
+
+
+<!-- MeteoRisk M1.1.4 active-view indicator -->
+<div
+    id="active-view-banner"
+    class="mr-active-view-banner"
+    role="status"
+    aria-live="polite">
+    <span class="mr-active-view-icon" aria-hidden="true">⚠</span>
+    <div class="mr-active-view-copy">
+        <div id="active-view-title" class="mr-active-view-title">УКУПАН РИЗИК</div>
+        <div id="active-view-description" class="mr-active-view-description">
+            Приказује највиши ризик од свих доступних опасности.
+        </div>
+    </div>
 </div>
 
 

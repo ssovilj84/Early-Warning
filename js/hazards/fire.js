@@ -271,8 +271,8 @@ function translatedFireFwiCategory(data) {
 }
 
 function fireFwiValueLabel(data) {
-    const n = Number(data?.fire_fwi);
-    if (Number.isFinite(n)) return `FWI ${formatNumber(n, 1)}`;
+    const n = optionalNumber(data?.fire_fwi);
+    if (n !== null) return `FWI ${formatNumber(n, 1)}`;
     const range = String(data?.fire_fwi_range || "").trim();
     return range
         ? `${currentLanguage === "sr" ? "EFFIS FWI класа" : "EFFIS FWI class"} (${range})`
@@ -387,7 +387,7 @@ function fireFwiDetailHtml(data, options = {}) {
     const technical = `
         <div class="multimodel-card">
             <div class="popup-section">${t.fireDanger} · FWI</div>
-            ${Number.isFinite(Number(data.fire_fwi))
+            ${optionalNumber(data.fire_fwi) !== null
                 ? `<div class="popup-row">FWI: <b>${formatNumber(data.fire_fwi, 1)}</b></div>`
                 : `<div class="popup-row">${currentLanguage === "sr" ? "EFFIS FWI опсег" : "EFFIS FWI range"}: <b>${data.fire_fwi_range || "—"}</b></div>`}
             <div class="popup-row">${t.fireCategory}: <b>${translatedFireFwiCategory(data)}</b></div>
@@ -420,7 +420,7 @@ function fireHdwDetailHtml(data, options = {}) {
     }
 
     const ir = fireHdwImpactRecommendation(data);
-    const percentile = Number(data.fire_hdw_percentile);
+    const percentile = optionalNumber(data?.fire_hdw_percentile);
     const level = fireHdwRiskLevel(data);
 
     const technical = `
@@ -428,7 +428,7 @@ function fireHdwDetailHtml(data, options = {}) {
             <div class="popup-section">${t.fireSpread} · HDW</div>
             <div class="popup-row">HDW: <b>${formatNumber(data.fire_hdw, 1)}</b></div>
             <div class="popup-row">${t.fireHdwCategory}: <b>${translatedFireHdwCategory(data)}</b></div>
-            <div class="popup-row">${currentLanguage === "sr" ? "Климатолошки перцентил" : "Climatological percentile"}: <b>${Number.isFinite(percentile) ? formatNumber(percentile, 0) + "." : "—"}</b></div>
+            <div class="popup-row">${currentLanguage === "sr" ? "Климатолошки перцентил" : "Climatological percentile"}: <b>${percentile !== null ? formatNumber(percentile, 0) + "." : "—"}</b></div>
             <div class="popup-row">${currentLanguage === "sr" ? "Извор" : "Source"}: <b>${data.fire_hdw_source || "ECMWF IFS"}</b></div>
             <div class="popup-note">${currentLanguage === "sr"
                 ? "HDW описује само атмосферску компоненту (топло–суво–ветровито). Не садржи стање горивог материјала, топографију нити вероватноћу паљења; зато се тумачи заједно са FWI."

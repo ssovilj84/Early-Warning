@@ -9,13 +9,15 @@ const FORECAST_HOURS =
     );
 
 const GEOMETRY_FILE =
-    "data/static/municipalities.geojson";
+    "data/static/municipalities_web.geojson";
 
 const HAZARD_INFO_FILE =
     "data/hazard_info.json";
 
 const GEFS_DIR =
     "data/gefs";
+
+const METEORISK_TIME_ZONE = "Europe/Belgrade";
 
 /* MeteoRisk STORMS multimodel.
    The existing five-day frontend (+003 to +120 h) is preserved.
@@ -942,25 +944,75 @@ function normalizeToUtcMidnight(dateValue) {
     ));
 }
 
+function timelineLeadHourForIndex(index) {
+    if (!timelineSlots.length || !Number.isInteger(index)) return null;
+
+    const slot = timelineSlots[index];
+    if (!slot) return null;
+
+    if (
+        slot.kind === "forecast"
+        && Number.isInteger(slot.data_index)
+        && Number.isFinite(Number(FORECAST_HOURS[slot.data_index]))
+    ) {
+        return Number(FORECAST_HOURS[slot.data_index]);
+    }
+
+    const slotTime = new Date(slot.valid_time).getTime();
+    if (!Number.isFinite(slotTime)) return null;
+
+    // Prefer the nearest preceding real forecast slot.
+    for (let i = index - 1; i >= 0; i -= 1) {
+        const ref = timelineSlots[i];
+        if (
+            ref
+            && ref.kind === "forecast"
+            && Number.isInteger(ref.data_index)
+            && Number.isFinite(Number(FORECAST_HOURS[ref.data_index]))
+        ) {
+            const refTime = new Date(ref.valid_time).getTime();
+            if (!Number.isFinite(refTime)) break;
+            const deltaHours = Math.round((slotTime - refTime) / (60 * 60 * 1000));
+            return Math.max(0, Number(FORECAST_HOURS[ref.data_index]) + deltaHours);
+        }
+    }
+
+    // If the first visible slot is timeline-only, derive it from the next real slot.
+    for (let i = index + 1; i < timelineSlots.length; i += 1) {
+        const ref = timelineSlots[i];
+        if (
+            ref
+            && ref.kind === "forecast"
+            && Number.isInteger(ref.data_index)
+            && Number.isFinite(Number(FORECAST_HOURS[ref.data_index]))
+        ) {
+            const refTime = new Date(ref.valid_time).getTime();
+            if (!Number.isFinite(refTime)) break;
+            const deltaHours = Math.round((slotTime - refTime) / (60 * 60 * 1000));
+            return Math.max(0, Number(FORECAST_HOURS[ref.data_index]) + deltaHours);
+        }
+    }
+
+    return null;
+}
+
+
 function displayLeadHour(validTime) {
-    if (!displayReferenceRun || !validTime) {
-        return currentForecastHour;
+    if (
+        currentForecastHour !== null
+        && currentForecastHour !== undefined
+        && String(currentForecastHour).trim() !== ""
+        && Number.isFinite(Number(currentForecastHour))
+    ) {
+        return Number(currentForecastHour);
     }
 
-    const valid = new Date(validTime);
-
-    if (!Number.isFinite(valid.getTime())) {
-        return currentForecastHour;
-    }
-
-    return Math.round(
-        (valid.getTime() - displayReferenceRun.getTime())
-        / (60 * 60 * 1000)
-    );
+    return null;
 }
 
 function formatLeadHour(validTime) {
     const hour = displayLeadHour(validTime);
+    if (!Number.isFinite(hour)) return "—";
 
     return "+"
         + String(Math.max(0, hour)).padStart(3, "0")
@@ -1617,6 +1669,12 @@ async function dataForTimelineSlot(index) {
 
     const slot =
         timelineSlots[safeIndex];
+
+    /* Public +hour follows the actual forecast/timeline mapping.  Missing
+       3-hour products are interpolated from the nearest real forecast slot,
+       so a timeline-only slot is never displayed as a false +000 h. */
+    currentForecastHour =
+        timelineLeadHourForIndex(safeIndex);
 
     let data;
 
@@ -2412,57 +2470,45 @@ function overallPopupHazardsHtml(data) {
 function formatValidTime(
     isoString
 ) {
+    if (!isoString) return "—";
 
-    if (!isoString) {
-        return "—";
-    }
+    const date = new Date(isoString);
+    if (!Number.isFinite(date.getTime())) return "—";
 
-    const date =
-        new Date(
-            isoString
-        );
-
-    if (
-        currentLanguage === "sr"
-    ) {
-
-        return (
-            date.toLocaleDateString(
-                "sr-RS",
-                {
-                    timeZone: "UTC",
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric"
-                }
-            )
-            +
-            " "
-            +
-            String(
-                date.getUTCHours()
-            ).padStart(2, "0")
-            +
-            " UTC"
-        );
-    }
-
-    return (
-        date.toLocaleString(
-            "en-GB",
-            {
-                timeZone: "UTC",
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            }
-        )
-        +
-        " UTC"
+    const locale = currentLanguage === "sr" ? "sr-RS" : "en-GB";
+    const value = date.toLocaleString(
+        locale,
+        {
+            timeZone: METEORISK_TIME_ZONE,
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }
     );
+
+    return value + (currentLanguage === "sr" ? " локално" : " local");
+}
+
+function formatTechnicalUtcTime(isoString) {
+    if (!isoString) return "—";
+    const date = new Date(isoString);
+    if (!Number.isFinite(date.getTime())) return "—";
+
+    return date.toLocaleString(
+        currentLanguage === "sr" ? "sr-RS" : "en-GB",
+        {
+            timeZone: "UTC",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }
+    ) + " UTC";
 }
 
 
@@ -2909,7 +2955,7 @@ function modulePopupContent(data, name, moduleKey) {
 }
 
 
-function popupContent(
+function popupContentCore(
     properties
 ) {
 
@@ -3167,6 +3213,17 @@ function popupContent(
 }
 
 
+
+
+/* ============================================================
+   METEORISK M1.0.1 DESKTOP POPUP ACTION FIX
+   One renderer for desktop Leaflet popup and mobile detail sheet.
+   ============================================================ */
+function popupContent(properties) {
+    const html = popupContentCore(properties);
+    return html + mrPopupActionsHtml();
+}
+
 /* ============================================================
    MOBILE DETAIL PANEL
    ============================================================ */
@@ -3184,6 +3241,7 @@ function openMobileDetail(properties) {
 
     heading.textContent = municipalityName(properties);
     body.innerHTML = popupContent(properties);
+    mrInjectPopupActions(body);
 
     /* The panel header already contains the municipality name. */
     const duplicateTitle = body.querySelector(".popup-title");
@@ -3632,6 +3690,7 @@ async function initializeData() {
            Refresh availability labels and map once more to avoid false
            "all unavailable" state on initial page load. */
         appReady = true;
+        hideAppLoader();
         updateHazardAvailabilityLabels();
         updateHeader();
         updateLegend();
@@ -3655,6 +3714,7 @@ async function initializeData() {
             : "Error loading data.",
             8000
         );
+        showAppLoaderError();
     }
 }
 
@@ -3682,9 +3742,10 @@ function updateTimelineLabels() {
     document.getElementById(
         "lead-time-label"
     ).textContent =
-        currentLanguage === "sr"
-        ? "Временска линија · недоступно је означено"
-        : "Timeline · unavailable marked";
+        t.lead + ": " + formatLeadHour(currentModelData.valid_time)
+        + (currentLanguage === "sr"
+            ? " · локално време"
+            : " · local time");
 }
 
 
@@ -3932,6 +3993,88 @@ function refreshSelectedMunicipalityPopup() {
 }
 
 
+/* MeteoRisk M1.1.4: explicit active map view.
+   The default map is overall risk; a dominant FIRE signal must not look
+   like the FIRE module was automatically selected. */
+function activeViewModuleLabel(group) {
+    const labels = currentLanguage === "sr"
+        ? {
+            storm: "⛈ ОЛУЈА",
+            wind: "💨 ВЕТАР",
+            temperature: "🌡 ТЕМПЕРАТУРА",
+            fire: "🔥 ПОЖАРИ",
+            air_quality: "≋ КВАЛИТЕТ ВАЗДУХА",
+            uv: "🌞 UV ИНДЕКС"
+        }
+        : {
+            storm: "⛈ STORM",
+            wind: "💨 WIND",
+            temperature: "🌡 TEMPERATURE",
+            fire: "🔥 FIRES",
+            air_quality: "≋ AIR QUALITY",
+            uv: "🌞 UV INDEX"
+        };
+
+    return labels[group] || (
+        currentLanguage === "sr"
+        ? "ИЗАБРАНИ МОДУЛ"
+        : "SELECTED MODULE"
+    );
+}
+
+
+function updateActiveViewIndicator() {
+    const banner = document.getElementById("active-view-banner");
+    const title = document.getElementById("active-view-title");
+    const description = document.getElementById("active-view-description");
+    const icon = banner
+        ? banner.querySelector(".mr-active-view-icon")
+        : null;
+
+    if (!banner || !title || !description) {
+        return;
+    }
+
+    if (currentHazard === "overall_risk" || !currentModule) {
+        if (icon) icon.textContent = "⚠";
+        title.textContent =
+            currentLanguage === "sr"
+            ? "УКУПАН РИЗИК"
+            : "OVERALL RISK";
+        description.textContent =
+            currentLanguage === "sr"
+            ? "Приказује највиши ризик од свих доступних опасности."
+            : "Shows the highest risk across all available hazards.";
+        return;
+    }
+
+    const moduleLabel = activeViewModuleLabel(currentModule);
+    const moduleIconMatch = moduleLabel.match(/^(\S+)\s+/);
+
+    if (icon) {
+        icon.textContent =
+            moduleIconMatch
+            ? moduleIconMatch[1]
+            : "●";
+    }
+
+    title.textContent =
+        moduleLabel.replace(/^(\S+)\s+/, "");
+
+    if (currentHazard === "module_risk") {
+        description.textContent =
+            currentLanguage === "sr"
+            ? "Приказује највиши ризик у изабраном модулу."
+            : "Shows the highest risk within the selected module.";
+    } else {
+        description.textContent =
+            currentLanguage === "sr"
+            ? "Приказује изабрани параметар овог модула."
+            : "Shows the selected parameter within this module.";
+    }
+}
+
+
 function setOverallRiskView() {
     currentModule = null;
     currentHazard = "overall_risk";
@@ -4122,6 +4265,19 @@ uvGroupButton.addEventListener(
 
 async function loadAllForecasts() {
 
+    /*
+       MeteoRisk M1.1.3: defer non-core overlays until a timeline slot is rendered.
+
+       IMPORTANT:
+       - Keep the original 40-slot core forecast schedule and its valid_time values.
+       - Keep STORMS overlay here because it also defines the public +003...+024
+         mapping to the underlying GEFS file.
+       - Temperature, thermal stress, FIRE, AQ and UV are attached later by
+         dataForTimelineSlot(), for the exact slot being displayed/aggregated.
+       This avoids doing the same heavy overlay work for all 40 files before
+       first paint, without reconstructing or changing the authoritative timeline.
+    */
+
     if (allForecastData) {
         return allForecastData;
     }
@@ -4151,18 +4307,15 @@ async function loadAllForecasts() {
 
                 const data = await response.json();
 
+                /*
+                   STORMS must remain attached to the public slot here.
+                   For +003...+024, baseGefHour may intentionally differ from
+                   the public hour (e.g. public +003 -> older GEFS f033).
+                */
                 await applyMultimodelStormsOverlay(
                     data,
                     hour
                 );
-
-                await applyTemperatureOverlay(
-                    data
-                );
-
-                await applyHeatStressOverlay(data);
-                await applyFireOverlay(data);
-        await applyEnvironmentOverlay(data);
 
                 data.wind_available = true;
 
@@ -4172,15 +4325,19 @@ async function loadAllForecasts() {
                         && data.storms_multimodel_matches > 0
                     );
 
-                data.temperature_available =
-                    Boolean(
-                        (data.temperature_multimodel && data.temperature_multimodel_matches > 0)
-                        || (data.heat_stress_multimodel && data.heat_stress_multimodel_matches > 0)
-                    );
-
-                data.fire_available = Boolean(
-                    data.fire_fwi_available || data.fire_hdw_available
-                );
+                /*
+                   Non-core overlays are intentionally left for
+                   dataForTimelineSlot(). Explicit false values prevent stale
+                   availability inherited from a core JSON from leaking into UI.
+                */
+                data.temperature_multimodel = false;
+                data.temperature_available = false;
+                data.heat_stress_multimodel = false;
+                data.fire_fwi_available = false;
+                data.fire_hdw_available = false;
+                data.fire_available = false;
+                data.air_quality_available = false;
+                data.uv_available = false;
 
                 return data;
             }
@@ -4193,90 +4350,43 @@ async function loadAllForecasts() {
 
 
 function formatOverviewMoment(isoString) {
-
-    const date = new Date(isoString);
-
-    if (currentLanguage === "sr") {
-        return (
-            String(date.getUTCDate()).padStart(2, "0")
-            + "."
-            + String(date.getUTCMonth() + 1).padStart(2, "0")
-            + "."
-            + date.getUTCFullYear()
-            + ". "
-            + String(date.getUTCHours()).padStart(2, "0")
-            + " UTC"
-        );
-    }
-
-    return date.toLocaleString(
-        "en-GB",
-        {
-            timeZone: "UTC",
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
-        }
-    ) + " UTC";
+    return formatValidTime(isoString);
 }
 
 
 function formatOverviewInterval(startIso, endIso) {
-
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-
-    const sameDay =
-        start.getUTCFullYear() === end.getUTCFullYear()
-        && start.getUTCMonth() === end.getUTCMonth()
-        && start.getUTCDate() === end.getUTCDate();
-
     if (startIso === endIso) {
         return formatOverviewMoment(startIso);
     }
 
-    if (currentLanguage === "sr" && sameDay) {
-        return (
-            String(start.getUTCDate()).padStart(2, "0")
-            + "."
-            + String(start.getUTCMonth() + 1).padStart(2, "0")
-            + "."
-            + start.getUTCFullYear()
-            + ". "
-            + String(start.getUTCHours()).padStart(2, "0")
-            + "–"
-            + String(end.getUTCHours()).padStart(2, "0")
-            + " UTC"
-        );
+    const start = new Date(startIso);
+    const end = new Date(endIso);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+        return "—";
     }
 
-    if (currentLanguage === "en" && sameDay) {
-        return (
-            start.toLocaleDateString(
-                "en-GB",
-                {
-                    timeZone: "UTC",
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric"
-                }
-            )
+    const startKey = localDateKeyBelgrade(startIso);
+    const endKey = localDateKeyBelgrade(endIso);
+    const locale = currentLanguage === "sr" ? "sr-RS" : "en-GB";
+    const timeOptions = {
+        timeZone: METEORISK_TIME_ZONE,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    };
+
+    if (startKey && startKey === endKey) {
+        return formatOverviewDateKey(startKey)
             + " "
-            + String(start.getUTCHours()).padStart(2, "0")
+            + start.toLocaleTimeString(locale, timeOptions)
             + "–"
-            + String(end.getUTCHours()).padStart(2, "0")
-            + " UTC"
-        );
+            + end.toLocaleTimeString(locale, timeOptions)
+            + (currentLanguage === "sr" ? " локално" : " local");
     }
 
-    return (
-        formatOverviewMoment(startIso)
+    return formatOverviewMoment(startIso)
         + " – "
-        + formatOverviewMoment(endIso)
-    );
+        + formatOverviewMoment(endIso);
 }
 
 
@@ -6507,7 +6617,26 @@ function updateLanguage() {
         && document.getElementById("overview-panel").classList.contains("open")
         && allForecastData
     ) {
-        renderOverview(allForecastData, overviewFeature);
+        buildTimelineOverviewData()
+            .then(
+                overviewData => {
+                    if (
+                        overviewFeature
+                        && document.getElementById("overview-panel").classList.contains("open")
+                    ) {
+                        renderOverview(
+                            overviewData,
+                            overviewFeature
+                        );
+                    }
+                }
+            )
+            .catch(
+                error => console.warn(
+                    "Overview language refresh could not be rebuilt.",
+                    error
+                )
+            );
     }
 
     if (
@@ -6612,6 +6741,8 @@ function() {
 function updateLegend(
     div = null
 ) {
+
+    updateActiveViewIndicator();
 
     const element =
         div
@@ -6849,6 +6980,80 @@ window.addEventListener("resize", () => {
     }
 });
 
+
+
+/* ============================================================
+   METEORISK M1 POPUP ACTIONS + APP LOADER
+   ============================================================ */
+function hideAppLoader() {
+    const overlay = document.getElementById("app-loading-overlay");
+    if (!overlay) return;
+    overlay.setAttribute("aria-busy", "false");
+    overlay.classList.add("hidden");
+    window.setTimeout(() => {
+        if (overlay.parentNode) overlay.remove();
+    }, 320);
+}
+
+function showAppLoaderError() {
+    const overlay = document.getElementById("app-loading-overlay");
+    if (!overlay) return;
+    overlay.classList.add("error");
+    overlay.setAttribute("aria-busy", "false");
+    const text = document.getElementById("app-loading-text");
+    if (text) {
+        text.textContent = currentLanguage === "sr"
+            ? "Подаци тренутно нису могли да се учитају."
+            : "The data could not be loaded at this time.";
+    }
+}
+
+function mrPopupActionsHtml() {
+    const sr = currentLanguage === "sr";
+    return `
+        <div class="mr-popup-actions" data-mr-popup-actions>
+            <button type="button" class="mr-popup-action primary" data-mr-action="calendar">📅 ${sr ? "5 дана" : "5 days"}</button>
+            <button type="button" class="mr-popup-action" data-mr-action="share">↗ ${sr ? "Подели" : "Share"}</button>
+            <button type="button" class="mr-popup-action" data-mr-action="print">🖨 ${sr ? "Штампај" : "Print"}</button>
+        </div>`;
+}
+
+function mrInjectPopupActions(container) {
+    if (!container || container.querySelector("[data-mr-popup-actions]")) return;
+    container.insertAdjacentHTML("beforeend", mrPopupActionsHtml());
+}
+
+async function mrOpenSelectedOverview() {
+    if (!selectedLayer || !selectedLayer.feature) return;
+    map.closePopup();
+    closeMobileDetail();
+    await openFiveDayOverview(selectedLayer.feature);
+}
+
+async function mrShareSelected() {
+    if (typeof navigator.share === "function") {
+        await nativeShare();
+        return;
+    }
+    if (sharePanel) sharePanel.style.display = "block";
+}
+
+map.on("popupopen", event => {
+    const root = event.popup && event.popup.getElement ? event.popup.getElement() : null;
+    const content = root ? root.querySelector(".leaflet-popup-content") : null;
+    mrInjectPopupActions(content);
+});
+
+document.addEventListener("click", event => {
+    const button = event.target.closest("[data-mr-action]");
+    if (!button) return;
+    const action = button.dataset.mrAction;
+    if (action === "calendar") mrOpenSelectedOverview();
+    else if (action === "share") mrShareSelected();
+    else if (action === "print") window.print();
+});
+
+
 /* ============================================================
    START
    ============================================================ */
@@ -6858,3 +7063,10 @@ updateLanguage();
 updateTimeButtons();
 
 initializeData();
+
+window.setTimeout(() => {
+    const overlay = document.getElementById("app-loading-overlay");
+    if (overlay && !overlay.classList.contains("hidden") && appReady) {
+        hideAppLoader();
+    }
+}, 15000);
