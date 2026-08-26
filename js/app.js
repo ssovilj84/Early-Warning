@@ -2071,6 +2071,137 @@ function windThresholdForYellow(hazardKey) {
 }
 
 
+/* ============================================================
+   MeteoRisk M1.1.6 - OVERALL SUMMARY + DRAGGABLE DESKTOP POPUP
+   ============================================================ */
+
+function overallRiskLevelLabel(level) {
+    const safeLevel = Math.max(0, Math.min(4, Number(level) || 0));
+    const sr = [
+        "без значајног ризика",
+        "повишен",
+        "умерен",
+        "висок",
+        "веома висок"
+    ];
+    const en = [
+        "no significant risk",
+        "elevated",
+        "moderate",
+        "high",
+        "very high"
+    ];
+    return (currentLanguage === "sr" ? sr : en)[safeLevel];
+}
+
+
+function overallRiskDominantHazards(data) {
+    if (!data) return [];
+
+    const labels = currentLanguage === "sr"
+        ? {
+            storm: "Олуја",
+            wind: "Ветар",
+            temperature: "Максимална температура",
+            heat: "Топлотни стрес",
+            fwi: "Пожарна опасност (FWI)",
+            hdw: "Потенцијал ширења пожара (HDW)",
+            air: "Квалитет ваздуха",
+            uv: "UV индекс"
+        }
+        : {
+            storm: "Storm",
+            wind: "Wind",
+            temperature: "Maximum temperature",
+            heat: "Heat stress",
+            fwi: "Fire danger (FWI)",
+            hdw: "Fire spread potential (HDW)",
+            air: "Air quality",
+            uv: "UV index"
+        };
+
+    const candidates = [
+        { key:"storm", level: stormRiskLevel(data) },
+        { key:"wind", level: windRiskLevel(data) },
+        { key:"temperature", level: temperatureRiskLevel(data) },
+        { key:"heat", level: heatStressRiskLevel(data) },
+        { key:"fwi", level: fireFwiRiskLevel(data) },
+        { key:"hdw", level: fireHdwRiskLevel(data) }
+    ];
+
+    if (typeof airQualityRiskLevel === "function") {
+        candidates.push({ key:"air", level: airQualityRiskLevel(data) });
+    }
+
+    if (typeof uvRiskLevel === "function") {
+        candidates.push({ key:"uv", level: uvRiskLevel(data) });
+    }
+
+    const strongest = Math.max(
+        0,
+        ...candidates.map(item => Number(item.level) || 0)
+    );
+
+    if (strongest < 1) {
+        return [];
+    }
+
+    return candidates
+        .filter(item => (Number(item.level) || 0) === strongest)
+        .map(item => labels[item.key])
+        .filter(Boolean);
+}
+
+
+function overallRiskSummaryHtml(data) {
+    const level = overallRiskLevel(data);
+    const color = overallRiskColor(level);
+    const dominant = overallRiskDominantHazards(data);
+
+    const totalLabel =
+        currentLanguage === "sr"
+        ? "Укупан ризик"
+        : "Overall risk";
+
+    const dominantLabel =
+        currentLanguage === "sr"
+        ? "Доминантна опасност"
+        : "Dominant hazard";
+
+    const noneLabel =
+        currentLanguage === "sr"
+        ? "Нема издвојене значајне опасности"
+        : "No significant dominant hazard";
+
+    const explanation =
+        currentLanguage === "sr"
+        ? "Боја карте представља највиши ниво међу свим доступним опасностима у активном термину."
+        : "The map colour represents the highest level across all available hazards in the active time slot.";
+
+    const textColor = Number(level) >= 3 ? "#ffffff" : "#111827";
+
+    return `
+        <div class="mr-overall-risk-summary">
+            <div class="mr-overall-risk-summary-head">
+                <div>
+                    <div class="mr-overall-risk-summary-title">${totalLabel}</div>
+                    <div class="mr-overall-risk-summary-note">${explanation}</div>
+                </div>
+                <span
+                    class="mr-overall-risk-badge"
+                    style="background:${color};color:${textColor}">
+                    ${overallRiskLevelLabel(level)}
+                </span>
+            </div>
+            <div class="popup-row mr-overall-risk-dominant">
+                ${dominantLabel}:
+                <b>${dominant.length ? dominant.join(" · ") : noneLabel}</b>
+            </div>
+        </div>
+    `;
+}
+
+
 function overallPopupHazardsHtml(data) {
 
     const availability = hazardAvailability();
@@ -2754,8 +2885,6 @@ function modulePopupContent(data, name, moduleKey) {
         <div class="popup-title">${name}</div>
         <div class="popup-valid">
             ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-            <br>
-            ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
         </div>
     `;
 
@@ -2988,10 +3117,9 @@ function popupContentCore(
 
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-                <br>
-                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
+            ${overallRiskSummaryHtml(data)}
             ${overallPopupHazardsHtml(data)}
         `;
     }
@@ -3030,8 +3158,6 @@ function popupContentCore(
 
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-                <br>
-                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
             <div class="popup-section">${t.windGroup}</div>
@@ -3125,7 +3251,6 @@ function popupContentCore(
             <div class="popup-title">${name}</div>
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(data.fire_hdw_valid_time || currentModelData.valid_time)}
-                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
             ${fireHdwDetailHtml(data)}
         `;
@@ -3136,7 +3261,6 @@ function popupContentCore(
             <div class="popup-title">${name}</div>
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
             ${airPollutantDetailHtml(data, currentHazard)}
         `;
@@ -3147,7 +3271,6 @@ function popupContentCore(
             <div class="popup-title">${name}</div>
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-                <br>${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
             ${uvDetailHtml(data)}
         `;
@@ -3162,8 +3285,6 @@ function popupContentCore(
 
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-                <br>
-                ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
             </div>
 
             <div class="popup-section">${stormHazardLabel(currentHazard)}</div>
@@ -3190,8 +3311,6 @@ function popupContentCore(
 
         <div class="popup-valid">
             ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
-            <br>
-            ${t.lead}: ${formatLeadHour(currentModelData.valid_time)}
         </div>
 
         <div class="popup-section">${hazardLabels[currentHazard] || currentHazard}</div>
@@ -7070,3 +7189,195 @@ window.setTimeout(() => {
         hideAppLoader();
     }
 }, 15000);
+
+/* MeteoRisk M1.1.6.1 - VIEWPORT FLOATING POPUP
+   Desktop municipality popup is promoted from the Leaflet map pane to
+   document.body, so it becomes a true floating detail card and can move
+   across the entire browser viewport. Mobile keeps the bottom sheet. */
+let mrDesktopPopupDragState = null;
+
+function mrDesktopPopupIsMobile() {
+    return window.matchMedia("(max-width: 800px)").matches;
+}
+
+function mrPromoteLeafletPopupToViewport(popupElement) {
+    if (!popupElement || mrDesktopPopupIsMobile()) {
+        return popupElement;
+    }
+
+    if (popupElement.classList.contains("mr-viewport-popup")) {
+        return popupElement;
+    }
+
+    const rect = popupElement.getBoundingClientRect();
+
+    document.body.appendChild(popupElement);
+
+    popupElement.classList.add(
+        "mr-viewport-popup",
+        "mr-popup-dragged"
+    );
+
+    popupElement.style.setProperty(
+        "--mr-popup-left",
+        `${Math.max(8, rect.left)}px`
+    );
+    popupElement.style.setProperty(
+        "--mr-popup-top",
+        `${Math.max(8, rect.top)}px`
+    );
+
+    popupElement.style.marginLeft = "";
+    popupElement.style.marginTop = "";
+
+    return popupElement;
+}
+
+function mrClampViewportPopupPosition(popup, left, top) {
+    const margin = 8;
+    const rect = popup.getBoundingClientRect();
+
+    const maxLeft = Math.max(
+        margin,
+        window.innerWidth - rect.width - margin
+    );
+
+    const visibleHeight = Math.min(
+        rect.height,
+        window.innerHeight - 2 * margin
+    );
+
+    const maxTop = Math.max(
+        margin,
+        window.innerHeight - visibleHeight - margin
+    );
+
+    return {
+        left: Math.min(Math.max(margin, left), maxLeft),
+        top: Math.min(Math.max(margin, top), maxTop)
+    };
+}
+
+function mrDesktopPopupDragAllowed(event) {
+    if (mrDesktopPopupIsMobile()) return false;
+    if (!event || event.button !== 0) return false;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return false;
+
+    if (target.closest(
+        "button, a, input, select, textarea, summary, " +
+        ".popup-actions, .mr-popup-action-bar"
+    )) {
+        return false;
+    }
+
+    return Boolean(target.closest(".leaflet-popup-content-wrapper"));
+}
+
+document.addEventListener("pointerdown", event => {
+    if (!mrDesktopPopupDragAllowed(event)) return;
+
+    const wrapper = event.target.closest(".leaflet-popup-content-wrapper");
+    let popup = wrapper ? wrapper.closest(".leaflet-popup") : null;
+    if (!popup) return;
+
+    popup = mrPromoteLeafletPopupToViewport(popup);
+
+    const rect = popup.getBoundingClientRect();
+
+    mrDesktopPopupDragState = {
+        popup,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+        moved: false
+    };
+
+    popup.classList.add("mr-popup-drag-active");
+    document.body.classList.add("mr-popup-is-dragging");
+
+    try {
+        wrapper.setPointerCapture(event.pointerId);
+    } catch (_) {}
+
+    event.preventDefault();
+});
+
+document.addEventListener("pointermove", event => {
+    const state = mrDesktopPopupDragState;
+    if (!state || event.pointerId !== state.pointerId) return;
+
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+
+    if (!state.moved && Math.hypot(dx, dy) < 3) return;
+    state.moved = true;
+
+    const next = mrClampViewportPopupPosition(
+        state.popup,
+        state.startLeft + dx,
+        state.startTop + dy
+    );
+
+    state.popup.style.setProperty(
+        "--mr-popup-left",
+        `${next.left}px`
+    );
+    state.popup.style.setProperty(
+        "--mr-popup-top",
+        `${next.top}px`
+    );
+
+    event.preventDefault();
+});
+
+function mrStopDesktopPopupDrag(event) {
+    const state = mrDesktopPopupDragState;
+    if (!state) return;
+    if (event && event.pointerId !== state.pointerId) return;
+
+    state.popup.classList.remove("mr-popup-drag-active");
+    document.body.classList.remove("mr-popup-is-dragging");
+    mrDesktopPopupDragState = null;
+}
+
+document.addEventListener("pointerup", mrStopDesktopPopupDrag);
+document.addEventListener("pointercancel", mrStopDesktopPopupDrag);
+
+if (typeof map !== "undefined" && map && typeof map.on === "function") {
+    map.on("popupopen", event => {
+        if (mrDesktopPopupIsMobile()) return;
+
+        window.requestAnimationFrame(() => {
+            const popupElement =
+                event?.popup?._container
+                || document.querySelector(".leaflet-popup");
+
+            if (popupElement) {
+                mrPromoteLeafletPopupToViewport(popupElement);
+            }
+        });
+    });
+}
+
+window.addEventListener("resize", () => {
+    const popup = document.querySelector(".leaflet-popup.mr-viewport-popup");
+    if (!popup || mrDesktopPopupIsMobile()) return;
+
+    const rect = popup.getBoundingClientRect();
+    const next = mrClampViewportPopupPosition(
+        popup,
+        rect.left,
+        rect.top
+    );
+
+    popup.style.setProperty("--mr-popup-left", `${next.left}px`);
+    popup.style.setProperty("--mr-popup-top", `${next.top}px`);
+});
+
+
+
+/* MeteoRisk M1.1.6.1 - VIEWPORT FLOATING POPUP */

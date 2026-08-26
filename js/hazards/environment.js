@@ -460,19 +460,95 @@ function environmentRiskWindows(forecasts, municipalityID, moduleKey) {
 function airQualityOverviewGroupHtml(forecasts, municipalityID) {
     const windows = environmentRiskWindows(forecasts, municipalityID, "air_quality");
     if (!windows.length) return "";
+
+    const t = translations[currentLanguage];
+
     const rows = windows.map(window => {
         const d = window.strongest.data;
-        return `<div class="overview-risk"><div class="overview-risk-name">${translations[currentLanguage].airQualityGroup}</div><div class="overview-period">${formatOverviewInterval(window.start, window.end)} — <b>${translatedAqiBand(d)}</b> · ${translations[currentLanguage].airDominant}: <b>${translatedPollutantName(d.air_dominant_pollutant)}</b></div></div>`;
+        const ir = airQualityImpactRecommendation(d);
+
+        const adviceHtml =
+            overviewSelectedDate && ir
+            ? `
+                <div class="overview-muted" style="margin-top:7px;">
+                    <b>${t.impacts}:</b>
+                    ${ir.impact}
+                </div>
+                <div class="overview-muted" style="margin-top:5px;">
+                    <b>${t.recommendations}:</b>
+                    ${ir.recommendation}
+                </div>
+            `
+            : "";
+
+        return `
+            <div class="overview-risk">
+                <div class="overview-risk-name">${t.airQualityGroup}</div>
+                <div class="overview-period">
+                    ${formatOverviewInterval(window.start, window.end)}
+                    — <b>${translatedAqiBand(d)}</b>
+                    · ${t.airEuropeanAqi}: <b>${formatNumber(d.european_aqi, 0)}</b>
+                    · ${t.airDominant}: <b>${translatedPollutantName(d.air_dominant_pollutant)}</b>
+                </div>
+                ${adviceHtml}
+            </div>
+        `;
     }).join("");
-    return `<div class="overview-group"><div class="overview-group-title">${translations[currentLanguage].airQualityGroup}</div>${rows}</div>`;
+
+    return `
+        <div class="overview-group">
+            <div class="overview-group-title">${t.airQualityGroup}</div>
+            ${rows}
+        </div>
+    `;
 }
 
 function uvOverviewGroupHtml(forecasts, municipalityID) {
     const windows = environmentRiskWindows(forecasts, municipalityID, "uv");
     if (!windows.length) return "";
+
+    const t = translations[currentLanguage];
+
     const rows = windows.map(window => {
         const d = window.strongest.data;
-        return `<div class="overview-risk"><div class="overview-risk-name">${translations[currentLanguage].uvGroup}</div><div class="overview-period">${formatOverviewInterval(window.start, window.end)} — <b>${translatedUvCategory(d)}</b> · UVI <b>${formatNumber(d.uv_index, 1)}</b></div></div>`;
+        const ir = uvImpactRecommendation(d);
+
+        const adviceHtml =
+            overviewSelectedDate && ir
+            ? `
+                <div class="overview-muted" style="margin-top:7px;">
+                    <b>${t.impacts}:</b>
+                    ${ir.impact}
+                </div>
+                <div class="overview-muted" style="margin-top:5px;">
+                    <b>${t.recommendations}:</b>
+                    ${ir.recommendation}
+                </div>
+            `
+            : "";
+
+        return `
+            <div class="overview-risk">
+                <div class="overview-risk-name">${t.uvGroup}</div>
+                <div class="overview-period">
+                    ${formatOverviewInterval(window.start, window.end)}
+                    — <b>${translatedUvCategory(d)}</b>
+                    · ${t.uvIndex}: <b>${formatNumber(d.uv_index, 1)}</b>
+                </div>
+                ${adviceHtml}
+            </div>
+        `;
     }).join("");
-    return `<div class="overview-group"><div class="overview-group-title">${translations[currentLanguage].uvGroup}</div>${rows}</div>`;
+
+    return `
+        <div class="overview-group">
+            <div class="overview-group-title">${t.uvGroup}</div>
+            ${rows}
+        </div>
+    `;
 }
+
+/* MeteoRisk M1.1.7 - ENVIRONMENT OVERVIEW IMPACTS
+   UI contract:
+   availability -> risk/category -> value -> valid period -> impact ->
+   recommendation. Classification remains inside the hazard module. */

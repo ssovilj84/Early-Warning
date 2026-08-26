@@ -1590,3 +1590,179 @@ button.overview-day:hover { transform: translateY(-1px); }
         font-size: 10.5px;
     }
 }
+
+
+/* ============================================================
+   MeteoRisk M1.1.6 - DRAGGABLE DESKTOP POPUP
+   ============================================================ */
+
+.mr-overall-risk-summary {
+    margin: 8px 0 12px 0;
+    padding: 11px 12px;
+    border: 1px solid rgba(17, 24, 39, 0.14);
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.mr-overall-risk-summary-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.mr-overall-risk-summary-title {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.mr-overall-risk-summary-note {
+    margin-top: 2px;
+    max-width: 290px;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: #64748b;
+}
+
+.mr-overall-risk-badge {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+}
+
+.mr-overall-risk-dominant {
+    margin-top: 8px;
+}
+
+@media (min-width: 801px) {
+    .leaflet-popup-content-wrapper {
+        position: relative;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .leaflet-popup-content-wrapper::before {
+        content: "";
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        width: 42px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(100, 116, 139, 0.38);
+        transform: translateX(-50%);
+        pointer-events: none;
+    }
+
+    .leaflet-popup.mr-popup-drag-active .leaflet-popup-content-wrapper {
+        cursor: grabbing;
+        user-select: none;
+    }
+
+    .leaflet-popup.mr-popup-dragged .leaflet-popup-tip-container {
+        opacity: 0;
+    }
+
+    body.mr-popup-is-dragging {
+        cursor: grabbing;
+        user-select: none;
+    }
+}
+
+@media (max-width: 800px) {
+    .mr-overall-risk-summary {
+        padding: 10px;
+    }
+
+    .mr-overall-risk-summary-head {
+        gap: 8px;
+    }
+
+    .mr-overall-risk-summary-note {
+        font-size: 10px;
+    }
+}
+
+
+/* ============================================================
+   MeteoRisk M1.1.6.1 - VIEWPORT FLOATING POPUP
+   ============================================================ */
+
+@media (min-width: 801px) {
+    body > .leaflet-popup.mr-viewport-popup {
+        position: fixed !important;
+        left: var(--mr-popup-left, 24px) !important;
+        top: var(--mr-popup-top, 24px) !important;
+        bottom: auto !important;
+        right: auto !important;
+        margin: 0 !important;
+        transform: none !important;
+        z-index: 20000 !important;
+        pointer-events: auto;
+    }
+
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-content-wrapper {
+        max-height: min(78vh, 760px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-shadow:
+            0 14px 36px rgba(15, 23, 42, 0.22),
+            0 3px 10px rgba(15, 23, 42, 0.12);
+    }
+
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-tip-container {
+        display: none !important;
+    }
+
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-close-button {
+        z-index: 3;
+    }
+
+    body > .leaflet-popup.mr-viewport-popup.mr-popup-drag-active {
+        z-index: 21000 !important;
+    }
+}
+
+/* ============================================================
+   MeteoRisk M1.1.6.2 - PROMINENT POPUP CLOSE
+   ============================================================ */
+
+@media (min-width: 801px) {
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-close-button {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        top: 7px !important;
+        right: 7px !important;
+        width: 30px !important;
+        height: 30px !important;
+        padding: 0 !important;
+        border: 1px solid rgba(15, 23, 42, 0.16) !important;
+        border-radius: 50% !important;
+        background: rgba(255,255,255,0.96) !important;
+        color: #334155 !important;
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+        text-decoration: none !important;
+        box-shadow: 0 2px 8px rgba(15,23,42,0.12);
+        z-index: 10 !important;
+        cursor: pointer !important;
+    }
+
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-close-button:hover {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+
+    body > .leaflet-popup.mr-viewport-popup .leaflet-popup-content {
+        padding-top: 5px;
+    }
+}
