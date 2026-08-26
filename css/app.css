@@ -1766,3 +1766,177 @@ button.overview-day:hover { transform: translateY(-1px); }
         padding-top: 5px;
     }
 }
+
+
+/* MeteoRisk M1.1.8 - EXPERT DETAILS + SIGNATURE + POPUP TYPOGRAPHY */
+
+.leaflet-popup-content {
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.popup-title {
+    font-size: 19px;
+    line-height: 1.25;
+}
+
+.popup-valid {
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.popup-section {
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.popup-row {
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.popup-risk-box li {
+    line-height: 1.45;
+}
+
+.popup-note {
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+
+.multimodel-model-grid > div {
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.multimodel-model-grid b {
+    font-size: 14px;
+}
+
+.mr-expert-details {
+    margin-top: 12px;
+    padding-top: 2px;
+    border-top: 1px solid #d7dce2;
+}
+
+.mr-expert-summary {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    padding: 9px 4px 7px 2px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.mr-expert-summary::-webkit-details-marker {
+    display: none;
+}
+
+.mr-expert-summary::after {
+    content: "＋";
+    float: right;
+    margin-left: 12px;
+    color: #64748b;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.mr-expert-details[open] > .mr-expert-summary::after {
+    content: "−";
+}
+
+.mr-expert-details[open] > .mr-expert-summary {
+    color: #0f172a;
+}
+
+.mr-expert-body {
+    padding-bottom: 2px;
+}
+
+.meteorisk-signature {
+    position: absolute;
+    right: 18px;
+    top: 55px;
+    z-index: 2;
+    pointer-events: none;
+    white-space: nowrap;
+    font-family:
+        "Segoe Script",
+        "Brush Script MT",
+        "Lucida Handwriting",
+        cursive;
+    font-size: 17px;
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    line-height: 1;
+    color: #334155;
+    opacity: 0.38;
+    transform: rotate(-3deg);
+    transform-origin: center;
+}
+
+@media (min-width: 801px) {
+    .header {
+        padding-right: 155px;
+        min-height: 68px;
+    }
+}
+
+@media (max-width: 800px) {
+    .meteorisk-signature {
+        top: 17px;
+        right: 12px;
+        font-size: 15px;
+        opacity: 0.34;
+    }
+
+    .leaflet-popup-content {
+        font-size: 14px;
+        line-height: 1.42;
+    }
+
+    .popup-title {
+        font-size: 18px;
+    }
+
+    .popup-valid,
+    .popup-row,
+    .popup-section {
+        font-size: 14px;
+    }
+
+    .popup-note {
+        font-size: 12px;
+    }
+
+    .mr-expert-summary {
+        font-size: 13.5px;
+    }
+}
+
+@media print {
+    .meteorisk-signature {
+        position: fixed;
+        top: auto;
+        right: 16mm;
+        bottom: 10mm;
+        font-size: 19px;
+        opacity: 0.48;
+        color: #334155 !important;
+        transform: rotate(-3deg);
+    }
+
+    .mr-expert-details {
+        break-inside: avoid;
+    }
+
+    .mr-expert-details > .mr-expert-summary {
+        display: none;
+    }
+
+    .mr-expert-details > .mr-expert-body {
+        display: block !important;
+    }
+}
