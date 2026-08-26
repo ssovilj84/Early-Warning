@@ -69,7 +69,9 @@ let appReady = false;
 const HAZARD_MODULES = {
     storm: {
         labelElementId: "storm-group-label",
-        parameters: ["thunder", "hail", "large_hail", "very_large_hail"],
+        /* Public UI: ONE combined OLUJA risk.
+           Component hazards remain expert diagnostics only. */
+        parameters: [],
         available: () => Boolean(
             currentModelData
             && currentModelData.storms_available
@@ -79,7 +81,7 @@ const HAZARD_MODULES = {
 
     wind: {
         labelElementId: "wind-group-label",
-        parameters: ["wind_risk_level", "wind_10", "wind_17", "wind_24", "wind_28"],
+        parameters: ["wind_risk_level"],
         available: () => Boolean(
             currentModelData
             && currentModelData.wind_available
@@ -179,13 +181,8 @@ function moduleDataAvailable(data, moduleKey) {
     if (moduleKey === "wind") {
         return Boolean(
             currentModelData?.wind_available
-            && (
-                String(data.wind_risk_level || "").trim()
-                || Number.isFinite(Number(data.wind_10))
-                || Number.isFinite(Number(data.wind_17))
-                || Number.isFinite(Number(data.wind_24))
-                || Number.isFinite(Number(data.wind_28))
-            )
+            && typeof windV2DataAvailable === "function"
+            && windV2DataAvailable(data)
         );
     }
 
@@ -356,11 +353,7 @@ const translations = {
         notAvailableForTime: "Није доступно за изабрани термин",
         available: "доступно",
         unavailable: "није доступно",
-        windOverall: "Укупни ризик",
-        wind10: "Удар ≥ 10 m/s (36 km/h)",
-        wind17: "Олујни удар ≥ 17 m/s (61 km/h)",
-        wind24: "Жестоки олујни удар ≥ 24 m/s (86 km/h)",
-        wind28: "Оркански удар ≥ 28 m/s (101 km/h)",
+        windOverall: "Ризик од ветра",
 
         overviewTitle:
             "Преглед ризика за наредних 5 дана",
@@ -529,11 +522,7 @@ const translations = {
         notAvailableForTime: "Not available for the selected time",
         available: "available",
         unavailable: "not available",
-        windOverall: "Overall risk",
-        wind10: "Gust ≥ 10 m/s (36 km/h)",
-        wind17: "Gale gust ≥ 17 m/s (61 km/h)",
-        wind24: "Severe gale gust ≥ 24 m/s (86 km/h)",
-        wind28: "Hurricane-force gust ≥ 28 m/s (101 km/h)",
+        windOverall: "Wind risk",
 
         overviewTitle:
             "Risk overview for the next 5 days",
@@ -993,6 +982,19 @@ function timelineLeadHourForIndex(index) {
         }
     }
 
+    /* OLUJA v2 can be newer than the legacy core GEFS web cache.
+       Then every current/future slot may be timeline_only. Derive the
+       lead directly from the validated OLUJA model run. */
+    if (displayReferenceRun) {
+        const runTime = new Date(displayReferenceRun).getTime();
+        if (Number.isFinite(runTime)) {
+            const lead = Math.round((slotTime - runTime) / (60 * 60 * 1000));
+            if (lead >= 3 && lead <= 120 && lead % 3 === 0) {
+                return lead;
+            }
+        }
+    }
+
     return null;
 }
 
@@ -1127,20 +1129,33 @@ function translatedStormRiskColor(color) {
 function translatedConfidence(level) {
     const sr = {
         "LOW": "ниска",
+        "MEDIUM": "средња",
         "MODERATE": "умерена",
         "HIGH": "висока",
+        "SINGLE_MODEL": "један модел",
         "UNKNOWN": "непозната"
     };
 
     const en = {
         "LOW": "low",
+        "MEDIUM": "medium",
         "MODERATE": "moderate",
         "HIGH": "high",
+        "SINGLE_MODEL": "single model",
         "UNKNOWN": "unknown"
     };
 
-    const key = String(level || "").toUpperCase();
-    return (currentLanguage === "sr" ? sr : en)[key] || level || "—";
+    const key =
+        String(level || "")
+            .toUpperCase();
+
+    return (
+        currentLanguage === "sr"
+            ? sr
+            : en
+    )[key]
+        || level
+        || "—";
 }
 
 function translatedLocalSupport(level) {
@@ -1224,151 +1239,697 @@ async function loadMultimodelStormsRows(hour) {
 }
 
 
-async function baseGefForecastHourForSlot(hour) {
-    const rowsByName = await loadMultimodelStormsRows(hour);
 
-    /* No multimodel file: preserve the original GEFS five-day timeline. */
-    if (!rowsByName || rowsByName.size === 0) {
+/* ============================================================
+   OLUJA v2 - DIRECT VALIDATED WEB-DATA CONNECTION
+
+   Primary source:
+       data/storm/manifest.json
+       data/storm/runs/<RUN_ID>/fXXX.json
+
+   Behaviour:
+   - f003..f072: GEFS + ICON-EU EPS, equal model weights
+   - f075..f120: GEFS-only
+   - public timeline remains exact 3-hourly f003..f120
+   - missing ICON is null/unavailable, never 0
+   - legacy multimodel CSV remains fallback only
+   ============================================================ */
+
+let stormV2ManifestDirectPromise = null;
+const stormV2TermDirectCache = new Map();
+
+async function loadStormV2ManifestDirect() {
+    if (stormV2ManifestDirectPromise) {
+        return stormV2ManifestDirectPromise;
+    }
+
+    stormV2ManifestDirectPromise = (async () => {
+        try {
+            const response = await fetch(
+                "data/storm/manifest.json",
+                { cache: "no-store" }
+            );
+
+            if (!response.ok) {
+                console.warn(
+                    "OLUJA v2 manifest unavailable: HTTP "
+                    + response.status
+                );
+                return null;
+            }
+
+            const manifest = await response.json();
+
+            if (
+                !manifest
+                || manifest.schema !== "meteorisk_storm_v2"
+                || Number(manifest.term_count) !== 40
+                || Number(manifest.municipality_count) !== 194
+                || !Array.isArray(manifest.terms)
+            ) {
+                console.warn(
+                    "OLUJA v2 manifest schema/QC failed."
+                );
+                return null;
+            }
+
+            manifest.byHour = new Map();
+
+            manifest.terms.forEach(term => {
+                const hour = Number(term.forecast_hour);
+
+                if (Number.isFinite(hour)) {
+                    manifest.byHour.set(
+                        hour,
+                        term
+                    );
+                }
+            });
+
+            if (
+                manifest.byHour.size !== 40
+                || !manifest.byHour.has(3)
+                || !manifest.byHour.has(120)
+            ) {
+                console.warn(
+                    "OLUJA v2 manifest timeline QC failed."
+                );
+                return null;
+            }
+
+            if (
+                !displayReferenceRun
+                && manifest.model_run
+            ) {
+                displayReferenceRun =
+                    normalizeToUtcMidnight(
+                        manifest.model_run
+                    );
+            }
+
+            return manifest;
+        } catch (error) {
+            console.warn(
+                "OLUJA v2 manifest load failed.",
+                error
+            );
+            return null;
+        }
+    })();
+
+    return stormV2ManifestDirectPromise;
+}
+
+
+async function loadStormV2TermDirect(hour) {
+    const key = Number(hour);
+
+    if (stormV2TermDirectCache.has(key)) {
+        return stormV2TermDirectCache.get(key);
+    }
+
+    const manifest =
+        await loadStormV2ManifestDirect();
+
+    if (!manifest) {
+        return null;
+    }
+
+    const term = manifest.byHour.get(key);
+
+    if (!term || !term.file) {
+        return null;
+    }
+
+    try {
+        const response = await fetch(
+            "data/storm/" + term.file,
+            { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+            console.warn(
+                "OLUJA v2 f"
+                + String(key).padStart(3, "0")
+                + " unavailable: HTTP "
+                + response.status
+            );
+            return null;
+        }
+
+        const payload = await response.json();
+
+        if (
+            !payload
+            || payload.schema !== "meteorisk_storm_v2_term"
+            || Number(payload.forecast_hour) !== key
+            || Number(payload.municipality_count) !== 194
+            || !payload.municipalities
+        ) {
+            console.warn(
+                "OLUJA v2 term schema/QC failed for f"
+                + String(key).padStart(3, "0")
+            );
+            return null;
+        }
+
+        stormV2TermDirectCache.set(
+            key,
+            payload
+        );
+
+        return payload;
+    } catch (error) {
+        console.warn(
+            "OLUJA v2 term load failed for f"
+            + String(key).padStart(3, "0"),
+            error
+        );
+        return null;
+    }
+}
+
+
+async function baseGefForecastHourForSlot(hour) {
+    const stormV2Manifest =
+        await loadStormV2ManifestDirect();
+
+    if (
+        stormV2Manifest
+        && stormV2Manifest.byHour.has(
+            Number(hour)
+        )
+    ) {
+        return Number(hour);
+    }
+
+    const rowsByName =
+        await loadMultimodelStormsRows(
+            hour
+        );
+
+    if (
+        !rowsByName
+        || rowsByName.size === 0
+    ) {
         return hour;
     }
 
-    const firstRow = rowsByName.values().next().value;
+    const firstRow =
+        rowsByName.values().next().value;
+
     const gefsHour = optionalNumber(
-        firstRow ? firstRow.gefs_forecast_hour : null
+        firstRow
+            ? firstRow.gefs_forecast_hour
+            : null
     );
 
-    return Number.isFinite(Number(gefsHour))
+    return Number.isFinite(
+        Number(gefsHour)
+    )
         ? Number(gefsHour)
         : hour;
 }
 
-async function applyMultimodelStormsOverlay(data, hour) {
-    if (!data || !geometryData) return data;
 
-    const rowsByName = await loadMultimodelStormsRows(hour);
+function applyStormV2DirectPayload(
+    data,
+    payload
+) {
+    if (
+        !data
+        || !data.municipalities
+        || !payload
+        || !payload.municipalities
+    ) {
+        return 0;
+    }
+
+    let matched = 0;
+
+    Object.entries(
+        payload.municipalities
+    ).forEach(
+        ([id, source]) => {
+            const target =
+                data.municipalities[id];
+
+            if (!target) {
+                return;
+            }
+
+            target.storms_multimodel = true;
+            target.storm_v2_available = true;
+
+            [
+                "thunder",
+                "hail",
+                "large_hail",
+                "very_large_hail"
+            ].forEach(
+                hazard => {
+                    target[hazard] =
+                        optionalNumber(
+                            source[
+                                "storm_p_"
+                                + hazard
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_risk_color"
+                    ] =
+                        source[
+                            "storm_"
+                            + hazard
+                            + "_risk_level"
+                        ]
+                        || "green";
+
+                    target[
+                        hazard
+                        + "_risk_level_num"
+                    ] =
+                        optionalNumber(
+                            source[
+                                "storm_"
+                                + hazard
+                                + "_risk_level_num"
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_confidence"
+                    ] =
+                        source[
+                            "storm_"
+                            + hazard
+                            + "_confidence"
+                        ]
+                        || "single_model";
+
+                    target[
+                        hazard
+                        + "_gefs"
+                    ] =
+                        optionalNumber(
+                            source[
+                                "storm_gefs_p_"
+                                + hazard
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_icon"
+                    ] =
+                        optionalNumber(
+                            source[
+                                "storm_icon_p_"
+                                + hazard
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_ecmwf"
+                    ] = null;
+
+                    target[
+                        hazard
+                        + "_models_available"
+                    ] =
+                        optionalNumber(
+                            source.storm_model_count
+                        );
+
+                    target[
+                        hazard
+                        + "_model_spread"
+                    ] =
+                        optionalNumber(
+                            source[
+                                "storm_"
+                                + hazard
+                                + "_model_difference_pp"
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_model_difference_pp"
+                    ] =
+                        optionalNumber(
+                            source[
+                                "storm_"
+                                + hazard
+                                + "_model_difference_pp"
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_agreement_gate_applied"
+                    ] =
+                        Boolean(
+                            source[
+                                "storm_"
+                                + hazard
+                                + "_agreement_gate_applied"
+                            ]
+                        );
+
+                    target[
+                        hazard
+                        + "_dominant_model"
+                    ] = "";
+
+                    target[
+                        hazard
+                        + "_source_models"
+                    ] =
+                        source.storm_models_available
+                        || payload.models
+                        || "";
+                }
+            );
+
+            target.storm_overview_color =
+                source.storm_risk_level
+                || "green";
+
+            target.storm_overview_confidence =
+                source.storm_confidence
+                || "single_model";
+
+            target.storm_dominant_hazard =
+                source.storm_dominant_hazards
+                || "";
+
+            target.storm_valid_time =
+                payload.valid_time
+                || "";
+
+            target.storm_reference_run =
+                payload.model_run
+                || "";
+
+            target.storm_gefs_forecast_hour =
+                Number(payload.forecast_hour);
+
+            target.storm_model_count =
+                Number(
+                    source.storm_model_count
+                    ?? payload.model_count
+                );
+
+            target.storm_models_available =
+                source.storm_models_available
+                || payload.models
+                || "";
+
+            target.storm_timeline_mode =
+                source.storm_timeline_mode
+                || payload.timeline_mode
+                || "";
+
+            matched += 1;
+        }
+    );
+
+    return matched;
+}
+
+
+async function applyLegacyMultimodelStormsOverlay(
+    data,
+    hour
+) {
+    if (
+        !data
+        || !geometryData
+    ) {
+        return data;
+    }
+
+    const rowsByName =
+        await loadMultimodelStormsRows(
+            hour
+        );
 
     if (!rowsByName) {
         data.storms_multimodel = false;
+        data.storms_multimodel_matches = 0;
+        data.storms_available = false;
         return data;
     }
 
     let matched = 0;
     let slotSourceModels = "";
 
-    geometryData.features.forEach(feature => {
-        const properties = feature.properties || {};
-        const name = normalizeMunicipalityName(
-            properties.Value_sc
-            || properties.Value_sl
-            || properties.Value_e
-        );
+    geometryData.features.forEach(
+        feature => {
+            const properties =
+                feature.properties
+                || {};
 
-        const row = rowsByName.get(name);
-        if (!row) return;
+            const name =
+                normalizeMunicipalityName(
+                    properties.Value_sc
+                    || properties.Value_sl
+                    || properties.Value_e
+                );
 
-        const id = municipalityId(properties);
+            const row =
+                rowsByName.get(name);
 
-        if (!data.municipalities || !data.municipalities[id]) {
-            return;
+            if (!row) return;
+
+            const id =
+                municipalityId(
+                    properties
+                );
+
+            if (
+                !data.municipalities
+                || !data.municipalities[id]
+            ) {
+                return;
+            }
+
+            const target =
+                data.municipalities[id];
+
+            target.storms_multimodel = true;
+
+            target.thunder =
+                optionalNumber(row.thunder_signal);
+            target.hail =
+                optionalNumber(row.hail_signal);
+            target.large_hail =
+                optionalNumber(row.large_hail_signal);
+            target.very_large_hail =
+                optionalNumber(row.very_large_hail_signal);
+
+            target.thunder_risk_color =
+                row.thunder_color || "GREY";
+            target.hail_risk_color =
+                row.hail_color || "GREY";
+            target.large_hail_risk_color =
+                row.large_hail_color || "GREY";
+            target.very_large_hail_risk_color =
+                row.very_large_hail_color || "GREY";
+
+            target.thunder_confidence =
+                row.thunder_confidence || "UNKNOWN";
+            target.hail_confidence =
+                row.hail_confidence || "UNKNOWN";
+            target.large_hail_confidence =
+                row.large_hail_confidence || "UNKNOWN";
+            target.very_large_hail_confidence =
+                row.very_large_hail_confidence || "UNKNOWN";
+
+            target.thunder_ecmwf =
+                optionalNumber(row.ecmwf_thunder);
+            target.thunder_icon =
+                optionalNumber(row.icon_thunder);
+            target.thunder_gefs =
+                optionalNumber(row.gefs_thunder);
+
+            target.hail_ecmwf =
+                optionalNumber(row.ecmwf_hail);
+            target.hail_icon =
+                optionalNumber(row.icon_hail);
+            target.hail_gefs =
+                optionalNumber(row.gefs_hail);
+
+            target.large_hail_ecmwf =
+                optionalNumber(row.ecmwf_large_hail);
+            target.large_hail_icon =
+                optionalNumber(row.icon_large_hail);
+            target.large_hail_gefs =
+                optionalNumber(row.gefs_large_hail);
+
+            target.very_large_hail_ecmwf =
+                optionalNumber(row.ecmwf_very_large_hail);
+            target.very_large_hail_icon =
+                optionalNumber(row.icon_very_large_hail);
+            target.very_large_hail_gefs =
+                optionalNumber(row.gefs_very_large_hail);
+
+            [
+                "thunder",
+                "hail",
+                "large_hail",
+                "very_large_hail"
+            ].forEach(
+                prefix => {
+                    target[
+                        prefix
+                        + "_models_available"
+                    ] =
+                        optionalNumber(
+                            row[
+                                prefix
+                                + "_models_available"
+                            ]
+                        );
+
+                    target[
+                        prefix
+                        + "_model_spread"
+                    ] =
+                        optionalNumber(
+                            row[
+                                prefix
+                                + "_model_spread"
+                            ]
+                        );
+
+                    target[
+                        prefix
+                        + "_dominant_model"
+                    ] =
+                        row[
+                            prefix
+                            + "_dominant_model"
+                        ]
+                        || "";
+
+                    target[
+                        prefix
+                        + "_source_models"
+                    ] =
+                        row[
+                            prefix
+                            + "_source_models"
+                        ]
+                        || "";
+                }
+            );
+
+            target.storm_overview_color =
+                row.storm_overview_color || "GREY";
+            target.storm_overview_confidence =
+                row.storm_overview_confidence || "UNKNOWN";
+            target.storm_dominant_hazard =
+                row.storm_dominant_hazard || "NONE";
+            target.storm_valid_time =
+                row.valid_time || "";
+            target.storm_reference_run =
+                row.reference_run || "";
+            target.storm_gefs_forecast_hour =
+                optionalNumber(row.gefs_forecast_hour);
+
+            if (!slotSourceModels) {
+                slotSourceModels =
+                    row.thunder_source_models
+                    || row.hail_source_models
+                    || "";
+            }
+
+            matched += 1;
         }
+    );
 
-        const target = data.municipalities[id];
-        target.storms_multimodel = true;
-
-        /* Final multimodel signals */
-        target.thunder = optionalNumber(row.thunder_signal);
-        target.hail = optionalNumber(row.hail_signal);
-        target.large_hail = optionalNumber(row.large_hail_signal);
-        target.very_large_hail = optionalNumber(row.very_large_hail_signal);
-
-        /* Final risk categories */
-        target.thunder_risk_color = row.thunder_color || "GREY";
-        target.hail_risk_color = row.hail_color || "GREY";
-        target.large_hail_risk_color = row.large_hail_color || "GREY";
-        target.very_large_hail_risk_color = row.very_large_hail_color || "GREY";
-
-        /* Confidence */
-        target.thunder_confidence = row.thunder_confidence || "UNKNOWN";
-        target.hail_confidence = row.hail_confidence || "UNKNOWN";
-        target.large_hail_confidence = row.large_hail_confidence || "UNKNOWN";
-        target.very_large_hail_confidence = row.very_large_hail_confidence || "UNKNOWN";
-
-        /* Individual model signals.
-           The central 24h backend uses model-first column names:
-           ecmwf_thunder / ecmwf_hail / ecmwf_large_hail etc. */
-        target.thunder_ecmwf = optionalNumber(row.ecmwf_thunder);
-        target.thunder_icon = optionalNumber(row.icon_thunder);
-        target.thunder_gefs = optionalNumber(row.gefs_thunder);
-
-        target.hail_ecmwf = optionalNumber(row.ecmwf_hail);
-        target.hail_icon = optionalNumber(row.icon_hail);
-        target.hail_gefs = optionalNumber(row.gefs_hail);
-
-        target.large_hail_ecmwf = optionalNumber(row.ecmwf_large_hail);
-        target.large_hail_icon = optionalNumber(row.icon_large_hail);
-        target.large_hail_gefs = optionalNumber(row.gefs_large_hail);
-
-        target.very_large_hail_ecmwf = optionalNumber(row.ecmwf_very_large_hail);
-        target.very_large_hail_icon = optionalNumber(row.icon_very_large_hail);
-        target.very_large_hail_gefs = optionalNumber(row.gefs_very_large_hail);
-
-        /* Per-hazard agreement diagnostics */
-        ["thunder", "hail", "large_hail", "very_large_hail"].forEach(prefix => {
-            target[prefix + "_models_available"] =
-                optionalNumber(row[prefix + "_models_available"]);
-
-            target[prefix + "_model_spread"] =
-                optionalNumber(row[prefix + "_model_spread"]);
-
-            target[prefix + "_models_ge10"] =
-                optionalNumber(row[prefix + "_models_ge10"]);
-
-            target[prefix + "_models_ge40"] =
-                optionalNumber(row[prefix + "_models_ge40"]);
-
-            target[prefix + "_models_ge50"] =
-                optionalNumber(row[prefix + "_models_ge50"]);
-
-            target[prefix + "_dominant_model"] =
-                row[prefix + "_dominant_model"] || "";
-
-            target[prefix + "_source_models"] =
-                row[prefix + "_source_models"] || "";
-        });
-
-        target.storm_overview_color =
-            row.storm_overview_color || "GREY";
-
-        target.storm_overview_confidence =
-            row.storm_overview_confidence || "UNKNOWN";
-
-        target.storm_dominant_hazard =
-            row.storm_dominant_hazard || "NONE";
-
-        /* Slot metadata from the multimodel product */
-        target.storm_valid_time = row.valid_time || "";
-        target.storm_reference_run = row.reference_run || "";
-        target.storm_gefs_forecast_hour =
-            optionalNumber(row.gefs_forecast_hour);
-
-        if (!slotSourceModels) {
-            slotSourceModels =
-                row.thunder_source_models
-                || row.hail_source_models
-                || "";
-        }
-
-        matched += 1;
-    });
-
-    data.storms_multimodel = matched > 0;
-    data.storms_multimodel_matches = matched;
+    data.storms_multimodel =
+        matched > 0;
+    data.storms_multimodel_matches =
+        matched;
+    data.storms_available =
+        matched > 0;
     data.storms_multimodel_source =
-        slotSourceModels || "ECMWF ENS | GEFS";
+        slotSourceModels
+        || "ECMWF ENS | GEFS";
     data.storms_multimodel_note =
         "Developmental multimodel risk signal; not a calibrated probability.";
 
     return data;
+}
+
+
+async function applyMultimodelStormsOverlay(
+    data,
+    hour
+) {
+    if (!data) {
+        return data;
+    }
+
+    const payload =
+        await loadStormV2TermDirect(
+            hour
+        );
+
+    if (payload) {
+        const matched =
+            applyStormV2DirectPayload(
+                data,
+                payload
+            );
+
+        if (matched === 194) {
+            data.storms_multimodel = true;
+            data.storms_multimodel_matches = matched;
+            data.storms_available = true;
+            data.storm_v2_available = true;
+
+            data.storms_multimodel_source =
+                payload.models || "";
+            data.storms_multimodel_note =
+                "MeteoRisk OLUJA v2 developmental multimodel risk; not calibrated probability.";
+
+            data.storm_run_id =
+                payload.run_id || "";
+            data.storm_model_run =
+                payload.model_run || "";
+            data.storm_valid_time =
+                payload.valid_time || "";
+            data.storm_forecast_hour =
+                Number(payload.forecast_hour);
+            data.storm_model_count =
+                Number(payload.model_count);
+            data.storm_timeline_mode =
+                payload.timeline_mode || "";
+
+            return data;
+        }
+
+        console.warn(
+            "OLUJA v2 municipality overlay matched "
+            + matched
+            + "/194 for f"
+            + String(hour).padStart(3, "0")
+            + "; falling back to legacy storm overlay."
+        );
+    }
+
+    return applyLegacyMultimodelStormsOverlay(
+        data,
+        hour
+    );
 }
 
 
@@ -1545,6 +2106,24 @@ async function buildTimelineSlots() {
         }
     });
 
+    /* OLUJA v2 has its own validated run/horizon and may be newer than
+       data/gefs. Extend the timeline through its latest valid time without
+       pretending that a stale GEFS file is a current forecast slot. */
+    const stormV2ManifestForTimeline =
+        await loadStormV2ManifestDirect();
+
+    if (
+        stormV2ManifestForTimeline
+        && Array.isArray(stormV2ManifestForTimeline.terms)
+    ) {
+        stormV2ManifestForTimeline.terms.forEach(term => {
+            const ms = new Date(term.valid_time).getTime();
+            if (Number.isFinite(ms) && ms >= now.getTime()) {
+                latestForecastMs = Math.max(latestForecastMs, ms);
+            }
+        });
+    }
+
     /*
        Daily temperature products may extend beyond the last 3-hour model
        product. Keep the continuous 3-hour axis through the whole last
@@ -1578,6 +2157,26 @@ async function buildTimelineSlots() {
             futureTemperatureDates.length - 1
         ]
         : null;
+
+    /* VETAR v2 is a standalone overlay keyed by actual valid_time.
+       It may be newer than the legacy core GEFS cache, so its horizon
+       must be allowed to extend the public timeline independently. */
+    if (typeof windV2LatestValidTime === "function") {
+        const windLatest = await windV2LatestValidTime();
+        const windLatestMs = windLatest
+            ? new Date(windLatest).getTime()
+            : NaN;
+
+        if (
+            Number.isFinite(windLatestMs)
+            && windLatestMs >= now.getTime()
+        ) {
+            latestForecastMs = Math.max(
+                latestForecastMs,
+                windLatestMs
+            );
+        }
+    }
 
     const slots = [];
 
@@ -1687,7 +2286,15 @@ async function dataForTimelineSlot(index) {
             allForecastData[slot.data_index]
         );
 
-        data.wind_available = true;
+        /* Re-attach OLUJA by the authoritative public slot lead. */
+        if (Number.isFinite(Number(currentForecastHour))) {
+            await applyMultimodelStormsOverlay(
+                data,
+                Number(currentForecastHour)
+            );
+        }
+
+        await applyWindV2Overlay(data);
 
         data.storms_available =
             Boolean(
@@ -1734,6 +2341,16 @@ async function dataForTimelineSlot(index) {
             uv_available: false
         };
 
+        /* timeline_only is normal when OLUJA v2 is newer than the legacy
+           core GEFS cache. Attach the validated OLUJA payload here too. */
+        if (Number.isFinite(Number(currentForecastHour))) {
+            await applyMultimodelStormsOverlay(
+                data,
+                Number(currentForecastHour)
+            );
+        }
+
+        await applyWindV2Overlay(data);
         await applyTemperatureOverlay(data);
         await applyHeatStressTimelineOverlay(data);
         await applyFireOverlay(data);
@@ -1759,6 +2376,13 @@ async function dataForTimelineSlot(index) {
 
     /* The timeline is authoritative. Never leave an inherited stale valid time. */
     data.valid_time = slot.valid_time;
+
+    if (
+        data.wind_available
+        && Number.isFinite(Number(data.wind_forecast_hour))
+    ) {
+        currentForecastHour = Number(data.wind_forecast_hour);
+    }
 
     return data;
 }
@@ -1853,95 +2477,248 @@ async function showTimelineSlot(index) {
 
 
 
-function hazardModelSignalsHtml(data, hazardKey) {
-    const prefix = stormHazardPrefix(hazardKey);
-    const ecmwf = data[prefix + "_ecmwf"];
-    const icon = data[prefix + "_icon"];
-    const gefs = data[prefix + "_gefs"];
+function hazardModelSignalsHtml(
+    data,
+    hazardKey
+) {
+    const prefix =
+        stormHazardPrefix(
+            hazardKey
+        );
+
+    const icon =
+        data[
+            prefix
+            + "_icon"
+        ];
+
+    const gefs =
+        data[
+            prefix
+            + "_gefs"
+        ];
 
     if (
-        !Number.isFinite(Number(ecmwf))
-        && !Number.isFinite(Number(icon))
-        && !Number.isFinite(Number(gefs))
+        !Number.isFinite(
+            Number(icon)
+        )
+        && !Number.isFinite(
+            Number(gefs)
+        )
     ) {
         return "";
     }
 
-    const t = translations[currentLanguage];
+    const t =
+        translations[
+            currentLanguage
+        ];
+
+    const modelCount =
+        Number(
+            data[
+                prefix
+                + "_models_available"
+            ]
+        );
+
+    const iconText =
+        Number.isFinite(
+            Number(icon)
+        )
+            ? formatProbability(icon)
+            : "—";
+
+    const denominator =
+        Number.isFinite(
+            Number(icon)
+        )
+            ? 2
+            : 1;
 
     return `
-        <div class="popup-section">${t.modelSignals}</div>
+        <div class="popup-section">
+            ${t.modelSignals}
+        </div>
+
         <div class="multimodel-model-grid">
-            <div><span>ECMWF ENS</span><b>${formatProbability(ecmwf)}</b></div>
-            <div><span>ICON-EU EPS</span><b>${formatProbability(icon)}</b></div>
-            <div><span>GEFS</span><b>${formatProbability(gefs)}</b></div>
+            <div>
+                <span>GEFS</span>
+                <b>${formatProbability(gefs)}</b>
+            </div>
+
+            <div>
+                <span>ICON-EU EPS</span>
+                <b>${iconText}</b>
+            </div>
+        </div>
+
+        <div class="popup-row">
+            ${currentLanguage === "sr"
+                ? "Доступни модели"
+                : "Models available"}:
+            <b>${
+                Number.isFinite(modelCount)
+                    ? modelCount
+                    : denominator
+            }/${denominator}</b>
         </div>
     `;
 }
 
-function multimodelStormDetailHtml(data, hazardKey) {
-    if (!data || !data.storms_multimodel) return "";
 
-    const t = translations[currentLanguage];
-    const prefix = stormHazardPrefix(hazardKey);
-    const signal = data[hazardKey];
-    const riskColor = data[prefix + "_risk_color"];
-    const confidence = data[prefix + "_confidence"];
-    const dominantModel = data[prefix + "_dominant_model"];
-    const sourceModels = data[prefix + "_source_models"];
-    const modelsAvailable = data[prefix + "_models_available"];
-    const modelSpread = data[prefix + "_model_spread"];
+function multimodelStormDetailHtml(
+    data,
+    hazardKey
+) {
+    if (
+        !data
+        || !data.storms_multimodel
+    ) {
+        return "";
+    }
 
-    const dominantModelRow =
-        dominantModel
-        ? `
-            <div class="popup-row">
-                ${t.dominantModel}:
-                <b>${dominantModel}</b>
-            </div>
-        `
-        : "";
+    const t =
+        translations[
+            currentLanguage
+        ];
 
-    const availabilityRow =
-        Number.isFinite(Number(modelsAvailable))
-        ? `
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Доступни модели" : "Models available"}:
-                <b>${Number(modelsAvailable).toFixed(0)}/3</b>
-            </div>
-        `
-        : "";
+    const prefix =
+        stormHazardPrefix(
+            hazardKey
+        );
+
+    const signal =
+        data[hazardKey];
+
+    const riskColor =
+        data[
+            prefix
+            + "_risk_color"
+        ];
+
+    const confidence =
+        data[
+            prefix
+            + "_confidence"
+        ];
+
+    const sourceModels =
+        data[
+            prefix
+            + "_source_models"
+        ]
+        || data.storm_models_available
+        || "";
+
+    const modelsAvailable =
+        Number(
+            data[
+                prefix
+                + "_models_available"
+            ]
+        );
+
+    const modelDifference =
+        data[
+            prefix
+            + "_model_difference_pp"
+        ];
+
+    const agreementGateApplied =
+        Boolean(
+            data[
+                prefix
+                + "_agreement_gate_applied"
+            ]
+        );
+
+    const dual =
+        modelsAvailable === 2
+        || Number.isFinite(
+            Number(
+                data[
+                    prefix
+                    + "_icon"
+                ]
+            )
+        );
 
     const sourceModelsRow =
         sourceModels
         ? `
             <div class="popup-row">
-                ${currentLanguage === "sr" ? "Модели у процени" : "Models used"}:
+                ${currentLanguage === "sr"
+                    ? "Модели у процени"
+                    : "Models used"}:
                 <b>${translatedModelAvailability(sourceModels)}</b>
             </div>
         `
         : "";
 
-    const spreadRow =
-        Number.isFinite(Number(modelSpread))
+    const differenceRow =
+        Number.isFinite(
+            Number(modelDifference)
+        )
         ? `
             <div class="popup-row">
-                ${currentLanguage === "sr" ? "Распон сигнала модела" : "Model signal spread"}:
-                <b>${formatProbability(modelSpread)}</b>
+                ${currentLanguage === "sr"
+                    ? "Разлика између модела"
+                    : "Model difference"}:
+                <b>${formatProbability(modelDifference)}</b>
             </div>
         `
         : "";
+
+    const agreementRow =
+        dual
+        ? `
+            <div class="popup-row">
+                ${currentLanguage === "sr"
+                    ? "Правило сагласности"
+                    : "Agreement gate"}:
+                <b>${
+                    agreementGateApplied
+                        ? (
+                            currentLanguage === "sr"
+                                ? "примењено"
+                                : "applied"
+                        )
+                        : (
+                            currentLanguage === "sr"
+                                ? "није ограничило ниво"
+                                : "did not limit level"
+                        )
+                }</b>
+            </div>
+        `
+        : "";
+
+    const modeNote =
+        dual
+        ? (
+            currentLanguage === "sr"
+                ? "GEFS + ICON-EU EPS, једнака тежина модела 50:50."
+                : "GEFS + ICON-EU EPS, equal model weights 50:50."
+        )
+        : (
+            currentLanguage === "sr"
+                ? "GEFS-only: ICON-EU EPS после +72 h нема упоредив TP3h термин."
+                : "GEFS-only: after +72 h ICON-EU EPS has no comparable TP3h slot."
+        );
 
     return `
         <div class="multimodel-card">
             <div class="popup-section">
                 ${currentLanguage === "sr"
-                    ? "Мултимоделска процена"
-                    : "Multimodel assessment"}
+                    ? "OLUJA v2 процена"
+                    : "STORM v2 assessment"}
             </div>
 
             <div class="popup-row">
-                ${currentLanguage === "sr" ? "Мултимоделски сигнал" : "Multimodel signal"}:
+                ${currentLanguage === "sr"
+                    ? "Финални сигнал"
+                    : "Final signal"}:
                 <b>${formatProbability(signal)}</b>
             </div>
 
@@ -1955,16 +2732,20 @@ function multimodelStormDetailHtml(data, hazardKey) {
                 <b>${translatedConfidence(confidence)}</b>
             </div>
 
-            ${availabilityRow}
             ${sourceModelsRow}
-            ${dominantModelRow}
-            ${spreadRow}
-            ${hazardModelSignalsHtml(data, hazardKey)}
+            ${differenceRow}
+            ${agreementRow}
+
+            ${hazardModelSignalsHtml(
+                data,
+                hazardKey
+            )}
 
             <div class="popup-note">
+                ${modeNote}
                 ${currentLanguage === "sr"
-                    ? "Приказана вредност је развојни мултимоделски сигнал ризика, а не калибрисана вероватноћа. Недоступан модел се не третира као 0%. Ниво ризика и поузданост су одвојене информације."
-                    : "The displayed value is a developmental multimodel risk signal, not a calibrated probability. An unavailable model is not treated as 0%. Risk level and confidence are separate information."}
+                    ? " Недоступан модел се не третира као 0%. Производ је развојни и није калибрисана вероватноћа."
+                    : " An unavailable model is not treated as 0%. The product is developmental and is not a calibrated probability."}
             </div>
         </div>
     `;
@@ -2058,17 +2839,6 @@ function stormHazardLabel(hazardKey) {
     return labels[hazardKey] || hazardKey;
 }
 
-
-function windThresholdForYellow(hazardKey) {
-    const thresholds = {
-        wind_10: 20,
-        wind_17: 10,
-        wind_24: 5,
-        wind_28: 5
-    };
-
-    return thresholds[hazardKey] ?? Infinity;
-}
 
 
 /* ============================================================
@@ -2251,60 +3021,31 @@ function overallPopupHazardsHtml(data) {
 
 
     const t = translations[currentLanguage];
-    const stormKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
-    const windKeys = ["wind_10", "wind_17", "wind_24", "wind_28"];
 
     let html = "";
     let significantCount = 0;
 
     /* --------------------------------------------------------
-       STORM: show ONLY yellow-or-higher parameters (>=10%).
-       Each significant storm parameter gets its own impacts
-       and recommendations from hazard_info.json.
+       OLUJA: one public hierarchical risk.
        -------------------------------------------------------- */
-
-    stormKeys.forEach(hazardKey => {
-        const probability = Number(data[hazardKey]);
-
-        if (data.storms_multimodel) {
-            const prefix = stormHazardPrefix(hazardKey);
-            const riskColor = data[prefix + "_risk_color"];
-
-            if (stormColorLevelNumber(riskColor) < 1) {
-                return;
-            }
-
-            significantCount += 1;
-
-            html += `
-                <div class="popup-section">${stormHazardLabel(hazardKey)}</div>
-                <div class="popup-row">
-                    ${currentLanguage === "sr" ? "Мултимоделски сигнал" : "Multimodel signal"}:
-                    <b>${formatProbability(probability)}</b>
-                </div>
-                <div class="popup-row">${t.risk}: <b>${translatedStormRiskColor(riskColor)}</b></div>
-                <div class="popup-row">${t.confidence}: <b>${translatedConfidence(data[prefix + "_confidence"])}</b></div>
-                ${hazardModelSignalsHtml(data, hazardKey)}
-                ${hazardInfoHtmlForHazard(hazardKey, data)}
-            `;
-            return;
-        }
-
-        if (!Number.isFinite(probability) || probability < 10) {
-            return;
-        }
-
+    if (
+        data.storms_multimodel
+        && stormRiskLevel(data) >= 1
+    ) {
         significantCount += 1;
 
         html += `
-            <div class="popup-section">${stormHazardLabel(hazardKey)}</div>
+            <div class="popup-section">${t.stormGroup}</div>
             <div class="popup-row">
-                ${currentLanguage === "sr" ? "Ансамбл сигнал" : "Ensemble signal"}:
-                <b>${formatProbability(probability)}</b>
+                ${currentLanguage === "sr" ? "Процена ризика" : "Risk assessment"}:
+                <b>${stormPublicCategory(data)}</b>
             </div>
-            ${hazardInfoHtmlForHazard(hazardKey, data)}
+            <div class="popup-row">
+                ${t.confidence}:
+                <b>${translatedConfidence(stormPublicConfidence(data))}</b>
+            </div>
         `;
-    });
+    }
 
     /* --------------------------------------------------------
        MAXIMUM TEMPERATURE: one daily severity category.
@@ -2501,83 +3242,15 @@ function overallPopupHazardsHtml(data) {
     }
 
     /* --------------------------------------------------------
-       WIND: show the group only when final wind risk is yellow
-       or higher. Inside it, show only wind thresholds that have
-       reached their own yellow probability threshold.
+       WIND v2: one public risk layer. Internal threshold
+       probabilities live in the expert-details section.
        -------------------------------------------------------- */
-
-    const windLevel = String(data.wind_risk_level || "green").toLowerCase();
-
-    if (windLevel !== "green") {
+    if (
+        typeof windV2RiskLevel === "function"
+        && windV2RiskLevel(data) >= 1
+    ) {
         significantCount += 1;
-
-        const windLabels = {
-            wind_10: t.wind10,
-            wind_17: t.wind17,
-            wind_24: t.wind24,
-            wind_28: t.wind28
-        };
-
-        let windRows = "";
-
-        windKeys.forEach(hazardKey => {
-            const probability = Number(data[hazardKey]);
-            const threshold = windThresholdForYellow(hazardKey);
-
-            if (!Number.isFinite(probability) || probability < threshold) {
-                return;
-            }
-
-            windRows += `
-                <div class="popup-row">
-                    ${windLabels[hazardKey]}:
-                    <b>${formatProbability(probability)}</b>
-                </div>
-            `;
-        });
-
-        const riskNamesSr = {
-            yellow: "низак",
-            orange: "умерен",
-            red: "висок"
-        };
-
-        const riskNamesEn = {
-            yellow: "low",
-            orange: "moderate",
-            red: "high"
-        };
-
-        html += `
-            <div class="popup-section">${t.windGroup}</div>
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Ниво ризика" : "Risk level"}:
-                <b>${currentLanguage === "sr" ? (riskNamesSr[windLevel] || windLevel) : (riskNamesEn[windLevel] || windLevel)}</b>
-            </div>
-
-            ${windRows}
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Очекивани удари" : "Expected gusts"}:
-                <b>${formatNumber(data.gust_median,1)}–${formatNumber(data.gust_p90,1)} m/s (${formatNumber(Number(data.gust_median)*3.6,0)}–${formatNumber(Number(data.gust_p90)*3.6,0)} km/h)</b>
-            </div>
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Ветар" : "Wind"}:
-                <b>${formatNumber(data.wind_speed,1)} m/s, ${data.wind_direction_text ?? "—"} (${formatNumber(data.wind_direction,0)}°)</b>
-            </div>
-
-            <div class="popup-risk-box">
-                <div class="popup-section">${currentLanguage === "sr" ? "Утицаји" : "Impacts"}</div>
-                <div>${currentLanguage === "sr" ? (data.wind_impacts_sr ?? "—") : (data.wind_impacts_en ?? data.wind_impacts_sr ?? "—")}</div>
-
-                <div class="popup-section">${currentLanguage === "sr" ? "Препоруке" : "Recommendations"}</div>
-                <div>${currentLanguage === "sr" ? (data.wind_recommendations_sr ?? "—") : (data.wind_recommendations_en ?? data.wind_recommendations_sr ?? "—")}</div>
-
-                <div class="popup-note">${t.riskNote}</div>
-            </div>
-        `;
+        html += windV2SummaryHtml(data, { expert: false });
     }
 
     if (significantCount === 0) {
@@ -2683,33 +3356,294 @@ function getProbabilityColor(
    STYLE
    ============================================================ */
 
-function stormRiskLevel(data) {
-    if (!data || !currentModelData?.storms_available) return 0;
+const STORM_PUBLIC_THRESHOLDS = Object.freeze({
+    thunderYellow: 20.0,
+    hailOrange: 30.0,
+    hailRed: 60.0,
+    largeHailRed: 40.0,
+    hailPurple: 80.0,
+    largeHailPurple: 60.0,
+    veryLargeHailPurple: 40.0
+});
 
-    if (data.storms_multimodel && data.storm_overview_color) {
-        return stormColorLevelNumber(data.storm_overview_color);
+
+function stormPublicProbability(data, hazardKey) {
+    if (!data) return 0;
+
+    const value = Number(data[hazardKey]);
+    return Number.isFinite(value) ? value : 0;
+}
+
+
+function stormPublicAssessment(data) {
+    if (!data || !data.storms_multimodel) {
+        return {
+            level: 0,
+            drivingHazard: null
+        };
     }
 
-    let strongest = 0;
+    const thunder = stormPublicProbability(data, "thunder");
+    const hail = stormPublicProbability(data, "hail");
+    const largeHail = stormPublicProbability(data, "large_hail");
+    const veryLargeHail = stormPublicProbability(data, "very_large_hail");
 
-    ["thunder", "hail", "large_hail", "very_large_hail"].forEach(key => {
-        const value = Number(data[key]);
-        if (!Number.isFinite(value)) return;
-        const level =
-            value >= 50 ? 4 :
-            value >= 30 ? 3 :
-            value >= 20 ? 2 :
-            value >= 10 ? 1 : 0;
-        strongest = Math.max(strongest, level);
-    });
+    /*
+       OLUJA v2.1 - DEVELOPMENTAL PUBLIC CLASSIFICATION
 
-    return strongest;
+       PURPLE:
+         P(hail) >= 50%
+         OR P(hail >= 2 cm) >= 35%
+         OR P(hail >= 5 cm) >= 15%
+
+       RED:
+         P(hail) >= 35%
+         OR P(hail >= 2 cm) >= 20%
+
+       ORANGE:
+         P(hail) >= 15%
+
+       YELLOW:
+         P(thunderstorm) >= 20%
+
+       Checks run from the highest level downward.
+       These thresholds affect the public display only.
+    */
+
+    if (
+        hail >= STORM_PUBLIC_THRESHOLDS.hailPurple
+        || largeHail >= STORM_PUBLIC_THRESHOLDS.largeHailPurple
+        || veryLargeHail >= STORM_PUBLIC_THRESHOLDS.veryLargeHailPurple
+    ) {
+        let drivingHazard = "hail";
+
+        if (
+            veryLargeHail
+            >= STORM_PUBLIC_THRESHOLDS.veryLargeHailPurple
+        ) {
+            drivingHazard = "very_large_hail";
+        } else if (
+            largeHail
+            >= STORM_PUBLIC_THRESHOLDS.largeHailPurple
+        ) {
+            drivingHazard = "large_hail";
+        }
+
+        return {
+            level: 4,
+            drivingHazard
+        };
+    }
+
+    if (
+        hail >= STORM_PUBLIC_THRESHOLDS.hailRed
+        || largeHail >= STORM_PUBLIC_THRESHOLDS.largeHailRed
+    ) {
+        return {
+            level: 3,
+            drivingHazard:
+                largeHail >= STORM_PUBLIC_THRESHOLDS.largeHailRed
+                    ? "large_hail"
+                    : "hail"
+        };
+    }
+
+    if (hail >= STORM_PUBLIC_THRESHOLDS.hailOrange) {
+        return {
+            level: 2,
+            drivingHazard: "hail"
+        };
+    }
+
+    if (thunder >= STORM_PUBLIC_THRESHOLDS.thunderYellow) {
+        return {
+            level: 1,
+            drivingHazard: "thunder"
+        };
+    }
+
+    return {
+        level: 0,
+        drivingHazard: null
+    };
 }
+
+
+function stormRiskLevel(data) {
+    return stormPublicAssessment(data).level;
+}
+
+
+function stormPublicCategory(data) {
+    const level = stormRiskLevel(data);
+
+    const sr = [
+        "без значајног ризика од олује",
+        "могућност грмљавине",
+        "повећан ризик од грмљавине, уз могућност града",
+        "висок ризик од грмљавине и града",
+        "изражен ризик од грмљавине и града"
+    ];
+
+    const en = [
+        "no significant storm risk",
+        "thunderstorm possible",
+        "increased thunderstorm risk, with hail possible",
+        "high risk of thunderstorms and hail",
+        "pronounced risk of thunderstorms and hail"
+    ];
+
+    return (currentLanguage === "sr" ? sr : en)[level];
+}
+
+
+function stormPublicBadge(data) {
+    const level = stormRiskLevel(data);
+
+    const sr = [
+        "без значајног ризика",
+        "могућност",
+        "повећан ризик",
+        "висок ризик",
+        "изражен ризик"
+    ];
+
+    const en = [
+        "no significant risk",
+        "possible",
+        "increased risk",
+        "high risk",
+        "pronounced risk"
+    ];
+
+    return (currentLanguage === "sr" ? sr : en)[level];
+}
+
+
+function stormPublicConfidence(data) {
+    const assessment = stormPublicAssessment(data);
+    const driving = assessment.drivingHazard;
+
+    if (!driving) {
+        return data?.storm_overview_confidence || "unknown";
+    }
+
+    const prefix = stormHazardPrefix(driving);
+
+    return data[prefix + "_confidence"]
+        || data.storm_overview_confidence
+        || "unknown";
+}
+
+
+function stormPublicThresholdNote() {
+    return currentLanguage === "sr"
+        ? "Развојна OLUJA v2.2 класификација: жуто — P(грмљавина) ≥ 20%; наранџасто — P(град) ≥ 30%; црвено — P(град) ≥ 60% или P(≥2 cm) ≥ 40%; љубичасто — P(град) ≥ 80% или P(≥2 cm) ≥ 60% или P(≥5 cm) ≥ 40%. Прагови још нису калибрисани на историјским случајевима."
+        : "Developmental STORM v2.2 classification: yellow — P(thunderstorm) >= 20%; orange — P(hail) >= 30%; red — P(hail) >= 60% or P(>=2 cm) >= 40%; purple — P(hail) >= 80% or P(>=2 cm) >= 60% or P(>=5 cm) >= 40%. Thresholds have not yet been calibrated on historical cases.";
+}
+
+
+
+function stormImpactRecommendation(data) {
+    const level = stormRiskLevel(data);
+
+    const sr = {
+        0: { impact: "", recommendation: "" },
+        1: {
+            impact:
+                "Ако се грмљавинска појава реализује, локално су могући удари грома, краткотрајни пљускови и пролазно појачан ветар.",
+            recommendation:
+                "Пратите нова ажурирања. Током грмљавине избегавајте отворен простор, истакнуте положаје и заклон испод усамљеног дрвећа."
+        },
+        2: {
+            impact:
+                "Ако се појава реализује, поред грмљавине постоји повећана могућност града, јачих пљускова и краткотрајно јаког ветра, уз локалне сметње у саобраћају и активностима на отвореном.",
+            recommendation:
+                "Пратите развој ситуације и званична упозорења. Осетљиве активности на отвореном планирајте уз могућност брзог прекида, а возила и лаке предмете по могућности склоните на заштићено место."
+        },
+        3: {
+            impact:
+                "У случају развоја олуја, повећана је могућност јачих грмљавинских непогода са градом, интензивним пљусковима и јаким ударима ветра, уз локалну материјалну штету и поремећаје у саобраћају и пољопривреди.",
+            recommendation:
+                "Повећајте приправност, обезбедите предмете и возила када је то могуће и избегавајте изложене активности током приближавања олује. Пратите званична упозорења и упутства надлежних служби."
+        },
+        4: {
+            impact:
+                "Ако се најјачи ансамбл сценарио реализује, могуће су изражене грмљавинске непогоде са градом и другим опасним пратећим појавама, уз значајнију локалну штету и прекиде активности.",
+            recommendation:
+                "Потребан је висок степен приправности. Заштитите људе, возила и осетљиву имовину, благовремено прекините изложене активности и поступајте у складу са званичним упозорењима и упутствима надлежних служби."
+        }
+    };
+
+    const en = {
+        0: { impact: "", recommendation: "" },
+        1: {
+            impact:
+                "If thunderstorms develop, local lightning, brief heavy showers and temporarily stronger wind are possible.",
+            recommendation:
+                "Monitor updates. During thunderstorms avoid exposed areas, elevated locations and shelter beneath isolated trees."
+        },
+        2: {
+            impact:
+                "If storms develop, hail becomes more plausible together with heavier showers and brief strong wind, with localized disruption to traffic and outdoor activities.",
+            recommendation:
+                "Monitor developments and official warnings. Plan exposed outdoor activities so they can be stopped quickly, and shelter vehicles and light objects where practical."
+        },
+        3: {
+            impact:
+                "If storms develop, stronger thunderstorms with hail, intense showers and strong wind gusts become more plausible, with localized damage and disruption to transport and agriculture.",
+            recommendation:
+                "Increase preparedness, secure loose objects and vehicles where possible, and avoid exposed activities as storms approach. Follow official warnings and instructions."
+        },
+        4: {
+            impact:
+                "If the strongest ensemble scenario develops, pronounced severe thunderstorms with hail and other hazardous accompanying phenomena are possible, with potentially significant localized damage and disruption.",
+            recommendation:
+                "Maintain a high level of preparedness. Protect people, vehicles and vulnerable property, stop exposed activities in time, and follow official warnings and instructions."
+        }
+    };
+
+    return (currentLanguage === "sr" ? sr : en)[level] || {
+        impact: "",
+        recommendation: ""
+    };
+}
+
+
+function stormExpertSignalsHtml(data) {
+    if (!data || !data.storms_multimodel) return "";
+
+    const rows = [
+        ["thunder", currentLanguage === "sr" ? "Грмљавина" : "Thunderstorm"],
+        ["hail", currentLanguage === "sr" ? "Град" : "Hail"],
+        ["large_hail", currentLanguage === "sr" ? "Крупан град ≥ 2 cm" : "Large hail ≥ 2 cm"],
+        ["very_large_hail", currentLanguage === "sr" ? "Веома крупан град ≥ 5 cm" : "Very large hail ≥ 5 cm"]
+    ];
+
+    return rows.map(([key, label]) => {
+        const prefix = stormHazardPrefix(key);
+        const gefs = data[prefix + "_gefs"];
+        const icon = data[prefix + "_icon"];
+
+        const modelLine = Number.isFinite(Number(icon))
+            ? `GEFS ${formatProbability(gefs)} · ICON-EU EPS ${formatProbability(icon)}`
+            : `GEFS ${formatProbability(gefs)} · ICON-EU EPS —`;
+
+        return `
+            <div class="popup-row">
+                ${label}: <b>${formatProbability(data[key])}</b>
+            </div>
+            <div class="popup-note">${modelLine}</div>
+        `;
+    }).join("");
+}
+
 
 function windRiskLevel(data) {
     if (!data || !currentModelData?.wind_available) return 0;
-    const levels = {green:0, yellow:1, orange:2, red:3, purple:4};
-    return levels[String(data.wind_risk_level || "green").toLowerCase()] ?? 0;
+    return typeof windV2RiskLevel === "function"
+        ? windV2RiskLevel(data)
+        : 0;
 }
 
 function temperatureRiskLevel(data) {
@@ -2794,14 +3728,13 @@ function styleFeature(
             : "#c7c7c7";
 
     } else if (currentHazard === "wind_risk_level") {
-        const windRiskColors = {green:"#a6d96a", yellow:"#ffffbf", orange:"#fdae61", red:"#d7191c"};
-        fillColor = windRiskColors[String(value || "green").toLowerCase()] || "#cccccc";
-    } else if (["wind_10","wind_17","wind_24","wind_28"].includes(currentHazard)) {
-        const thresholds = {
-            wind_10:[20,50,80], wind_17:[10,30,60], wind_24:[5,15,30], wind_28:[5,10,20]
-        }[currentHazard];
-        const n = Number(value);
-        fillColor = !Number.isFinite(n) ? "#cccccc" : n >= thresholds[2] ? "#d7191c" : n >= thresholds[1] ? "#fdae61" : n >= thresholds[0] ? "#ffffbf" : "#a6d96a";
+        fillColor = (
+            data
+            && typeof windV2DataAvailable === "function"
+            && windV2DataAvailable(data)
+        )
+            ? windV2ColorHex(data.wind_risk_level)
+            : "#c7c7c7";
     } else if (
         currentHazard === "max_temperature"
         && data
@@ -3036,48 +3969,81 @@ function modulePopupContent(data, name, moduleKey) {
     }
 
     if (moduleKey === "wind") {
-        return header + `
-            <div class="popup-section">${t.windGroup}</div>
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Коначни ниво модула" : "Final module level"}:
-                <b>${currentLanguage === "sr"
-                    ? ({green:"без значајног ризика", yellow:"низак", orange:"умерен", red:"висок", purple:"веома висок"}[
-                        String(data.wind_risk_level || "green").toLowerCase()
-                    ] || data.wind_risk_level || "—")
-                    : String(data.wind_risk_level || "green")}</b>
-            </div>
-            <div class="popup-row">${t.wind10}: <b>${formatProbability(data.wind_10)}</b></div>
-            <div class="popup-row">${t.wind17}: <b>${formatProbability(data.wind_17)}</b></div>
-            <div class="popup-row">${t.wind24}: <b>${formatProbability(data.wind_24)}</b></div>
-            <div class="popup-row">${t.wind28}: <b>${formatProbability(data.wind_28)}</b></div>
-        `;
+        if (
+            typeof windV2DataAvailable !== "function"
+            || !windV2DataAvailable(data)
+        ) {
+            return header + riskSummaryHtml({
+                title: t.windGroup,
+                available: false
+            });
+        }
+
+        return header + windV2SummaryHtml(data, { expert: true });
     }
 
     if (moduleKey === "storm") {
-        const keys = HAZARD_MODULES.storm.parameters;
+        if (!data.storms_multimodel) {
+            return header + riskSummaryHtml({
+                title: t.stormGroup,
+                available: false
+            });
+        }
 
-        const rows = keys.map(hazardKey => {
-            const prefix = stormHazardPrefix(hazardKey);
-            const color =
-                data.storms_multimodel
-                ? data[prefix + "_risk_color"]
-                : null;
+        const finalLevel = stormRiskLevel(data);
+        const finalCategory = stormPublicCategory(data);
+        const finalBadge = stormPublicBadge(data);
+        const confidence = translatedConfidence(
+            stormPublicConfidence(data)
+        );
+        const impactRecommendation =
+            stormImpactRecommendation(data);
 
-            return `
-                <div class="popup-row">
-                    ${stormHazardLabel(hazardKey)}:
-                    <b>${formatProbability(data[hazardKey])}</b>
-                    ${color
-                        ? ` — ${translatedStormRiskColor(color)}`
-                        : ""}
-                </div>
-            `;
-        }).join("");
+        const expertHtml = `
+            <div class="popup-row">
+                ${currentLanguage === "sr"
+                    ? "Поузданост коначне процене"
+                    : "Final assessment confidence"}:
+                <b>${confidence}</b>
+            </div>
 
-        return header + `
-            <div class="popup-section">${t.stormGroup}</div>
-            ${rows}
+            <div class="popup-section">
+                ${currentLanguage === "sr"
+                    ? "Компонентни ансамбл сигнали"
+                    : "Component ensemble signals"}
+            </div>
+
+            ${stormExpertSignalsHtml(data)}
+
+            <div class="popup-note">
+                ${currentLanguage === "sr"
+                    ? "Компонентни проценти су стручни дијагностички сигнали и немају засебне јавне боје. Јавни производ је једна степенована процена ризика: ОЛУЈА."
+                    : "Component percentages are expert diagnostic signals and do not have separate public colours. The public product is one graded STORM risk assessment."}
+            </div>
+
+            <div class="popup-note">
+                ${stormPublicThresholdNote()}
+            </div>
         `;
+
+        return header
+            + riskSummaryHtml({
+                title: t.stormGroup,
+                level: finalLevel,
+                category: finalCategory,
+                badge: finalBadge,
+                value: currentLanguage === "sr"
+                    ? "Развојна ансамбл процена ризика"
+                    : "Developmental ensemble risk assessment",
+                impact: impactRecommendation.impact,
+                recommendation: impactRecommendation.recommendation
+            })
+            + expertDetailsHtml(
+                expertHtml,
+                currentLanguage === "sr"
+                    ? "Стручни детаљи OLUJA v2"
+                    : "STORM v2 expert details"
+            );
     }
 
     return header;
@@ -3134,54 +4100,16 @@ function popupContentCore(
 
 
     /* ========================================================
-       DETAIL MODE - WIND
+       DETAIL MODE - WIND v2
        ======================================================== */
 
-    if (["wind_risk_level", "wind_10", "wind_17", "wind_24", "wind_28"].includes(currentHazard)) {
-
-        const windRows = currentHazard === "wind_risk_level"
-            ? `
-                <div class="popup-row">${t.wind10}: <b>${formatProbability(data.wind_10)}</b></div>
-                <div class="popup-row">${t.wind17}: <b>${formatProbability(data.wind_17)}</b></div>
-                <div class="popup-row">${t.wind24}: <b>${formatProbability(data.wind_24)}</b></div>
-                <div class="popup-row">${t.wind28}: <b>${formatProbability(data.wind_28)}</b></div>
-            `
-            : `
-                <div class="popup-row">
-                    ${currentHazard === "wind_10" ? t.wind10 : currentHazard === "wind_17" ? t.wind17 : currentHazard === "wind_24" ? t.wind24 : t.wind28}:
-                    <b>${formatProbability(data[currentHazard])}</b>
-                </div>
-            `;
-
+    if (currentHazard === "wind_risk_level") {
         return `
             <div class="popup-title">${name}</div>
-
             <div class="popup-valid">
                 ${t.valid}: ${formatValidTime(currentModelData.valid_time)}
             </div>
-
-            <div class="popup-section">${t.windGroup}</div>
-            ${windRows}
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Очекивани удари" : "Expected gusts"}:
-                <b>${formatNumber(data.gust_median,1)}–${formatNumber(data.gust_p90,1)} m/s (${formatNumber(Number(data.gust_median)*3.6,0)}–${formatNumber(Number(data.gust_p90)*3.6,0)} km/h)</b>
-            </div>
-
-            <div class="popup-row">
-                ${currentLanguage === "sr" ? "Ветар" : "Wind"}:
-                <b>${formatNumber(data.wind_speed,1)} m/s, ${data.wind_direction_text ?? "—"} (${formatNumber(data.wind_direction,0)}°)</b>
-            </div>
-
-            ${data.wind_risk_level && data.wind_risk_level !== "green" ? `
-                <div class="popup-risk-box">
-                    <div class="popup-section">${currentLanguage === "sr" ? "Утицаји" : "Impacts"}</div>
-                    <div>${currentLanguage === "sr" ? (data.wind_impacts_sr ?? "—") : (data.wind_impacts_en ?? data.wind_impacts_sr ?? "—")}</div>
-                    <div class="popup-section">${currentLanguage === "sr" ? "Препоруке" : "Recommendations"}</div>
-                    <div>${currentLanguage === "sr" ? (data.wind_recommendations_sr ?? "—") : (data.wind_recommendations_en ?? data.wind_recommendations_sr ?? "—")}</div>
-                    <div class="popup-note">${t.riskNote}</div>
-                </div>
-            ` : ""}
+            ${windV2SummaryHtml(data, { expert: true })}
         `;
     }
 
@@ -3546,6 +4474,8 @@ async function loadForecast(
             data,
             hour
         );
+
+        await applyWindV2Overlay(data);
 
         await applyTemperatureOverlay(
             data
@@ -4234,7 +5164,8 @@ function openHazardGroup(group) {
     const airQualityOpen = group === "air_quality";
     const uvOpen = group === "uv";
 
-    stormSubcontrols.classList.toggle("open", stormOpen);
+    /* OLUJA is one public layer; its hidden diagnostic submenu never opens. */
+    stormSubcontrols.classList.remove("open");
     stormGroupButton.classList.toggle("open", stormOpen);
 
     windSubcontrols.classList.toggle("open", windOpen);
@@ -4261,8 +5192,10 @@ function openHazardGroup(group) {
 stormGroupButton.addEventListener(
     "click",
     () => {
-        if (stormSubcontrols.classList.contains("open")) {
-            stormSubcontrols.classList.remove("open");
+        if (
+            currentModule === "storm"
+            && currentHazard === "module_risk"
+        ) {
             stormGroupButton.classList.remove("open");
             setOverallRiskView();
         } else {
@@ -4436,7 +5369,9 @@ async function loadAllForecasts() {
                     hour
                 );
 
-                data.wind_available = true;
+                /* VETAR v2 is attached later by actual valid_time. */
+                data.wind_available = false;
+                data.wind_v2_available = false;
 
                 data.storms_available =
                     Boolean(
@@ -4595,6 +5530,155 @@ function buildRiskWindows(forecasts, municipalityID, hazardKey) {
 }
 
 
+function buildStormPublicWindows(forecasts, municipalityID) {
+    const significant = [];
+    let maxLevel = 0;
+
+    forecasts.forEach(forecast => {
+        const municipality = forecast.municipalities[municipalityID];
+        if (!municipality || !municipality.storms_multimodel) return;
+
+        const level = stormRiskLevel(municipality);
+        maxLevel = Math.max(maxLevel, level);
+
+        if (level >= 1) {
+            significant.push({
+                valid_time: forecast.valid_time,
+                level: level,
+                category: stormPublicCategory(municipality)
+            });
+        }
+    });
+
+    if (!significant.length) {
+        return { maxLevel, windows: [] };
+    }
+
+    const windows = [];
+    let current = {
+        start: significant[0].valid_time,
+        end: significant[0].valid_time,
+        maxLevel: significant[0].level,
+        category: significant[0].category
+    };
+
+    for (let i = 1; i < significant.length; i++) {
+        const previousTime = new Date(significant[i - 1].valid_time).getTime();
+        const currentTime = new Date(significant[i].valid_time).getTime();
+        const consecutive = currentTime - previousTime === 3 * 60 * 60 * 1000;
+
+        if (consecutive) {
+            current.end = significant[i].valid_time;
+            if (significant[i].level > current.maxLevel) {
+                current.maxLevel = significant[i].level;
+                current.category = significant[i].category;
+            }
+        } else {
+            windows.push(current);
+            current = {
+                start: significant[i].valid_time,
+                end: significant[i].valid_time,
+                maxLevel: significant[i].level,
+                category: significant[i].category
+            };
+        }
+    }
+
+    windows.push(current);
+    return { maxLevel, windows };
+}
+
+
+function stormOverviewGroupHtml(forecasts, municipalityID) {
+    const t = translations[currentLanguage];
+    const result = buildStormPublicWindows(forecasts, municipalityID);
+
+    if (result.windows.length === 0 && !overviewShowAll) {
+        return "";
+    }
+
+    const periodsHtml = result.windows.length
+        ? result.windows.map(window => `
+            <div class="overview-period">
+                ${formatOverviewInterval(window.start, window.end)}
+                — <b>${window.category}</b>
+            </div>
+        `).join("")
+        : `
+            <div class="overview-muted">
+                ${currentLanguage === "sr"
+                    ? "Нема значајног ризика од олује."
+                    : "No significant storm risk."}
+            </div>
+        `;
+
+    let detailHtml = "";
+
+    if (overviewSelectedDate) {
+        let strongest = null;
+
+        forecasts.forEach(forecast => {
+            const data = forecast.municipalities[municipalityID];
+
+            if (!data || !data.storms_multimodel) {
+                return;
+            }
+
+            const level = stormRiskLevel(data);
+
+            if (!strongest || level > strongest.level) {
+                strongest = {
+                    data,
+                    level,
+                    valid_time: forecast.valid_time
+                };
+            }
+        });
+
+        if (strongest) {
+            const ir = stormImpactRecommendation(strongest.data);
+
+            if (ir.impact || ir.recommendation) {
+                detailHtml = `
+                    <div class="overview-muted" style="margin-top:7px;">
+                        <b>${t.impacts}:</b>
+                        ${ir.impact}
+                    </div>
+
+                    <div class="overview-muted" style="margin-top:5px;">
+                        <b>${t.recommendations}:</b>
+                        ${ir.recommendation}
+                    </div>
+
+                    <div class="overview-muted" style="margin-top:5px;">
+                        ${currentLanguage === "sr"
+                            ? "Утицаји и препоруке односе се на случај да се прогнозирана појава реализује."
+                            : "Impacts and recommendations apply if the forecast event occurs."}
+                    </div>
+                `;
+            }
+        }
+    }
+
+    return `
+        <div class="overview-group">
+            <div class="overview-group-title">${t.stormGroup}</div>
+            <div class="overview-risk">
+                <div class="overview-risk-name">
+                    ${currentLanguage === "sr"
+                        ? "Степен ризика од олује"
+                        : "Storm risk level"}
+                </div>
+                ${periodsHtml}
+                ${detailHtml}
+            </div>
+        </div>
+    `;
+}
+
+
+
+
 function overviewRiskName(key) {
 
     const t = translations[currentLanguage];
@@ -4603,8 +5687,7 @@ function overviewRiskName(key) {
         thunder: t.thunder.replace("⚡ ", ""),
         hail: t.hail.replace("🧊 ", ""),
         large_hail: t.largeHail.replace("🧊 ", ""),
-        very_large_hail: t.veryLargeHail.replace("🧊 ", ""),
-        wind_10: t.wind10, wind_17: t.wind17, wind_24: t.wind24, wind_28: t.wind28
+        very_large_hail: t.veryLargeHail.replace("🧊 ", "")
     };
 
     return names[key];
@@ -4620,7 +5703,6 @@ function overviewDayRisk(forecasts, municipalityID, dateKey) {
     // Return the strongest daily risk category across ALL hazards.
     // 0 green, 1 yellow, 2 orange, 3 red, 4 purple.
     let strongest = 0;
-    const stormKeys = ["thunder", "hail", "large_hail", "very_large_hail"];
     const windLevel = {green:0, yellow:1, orange:2, red:3, purple:4};
 
     forecasts.forEach(forecast => {
@@ -4628,23 +5710,12 @@ function overviewDayRisk(forecasts, municipalityID, dateKey) {
         const municipality = forecast.municipalities[municipalityID];
         if (!municipality) return;
 
-        stormKeys.forEach(key => {
-            if (municipality.storms_multimodel) {
-                const prefix = stormHazardPrefix(key);
-                strongest = Math.max(
-                    strongest,
-                    stormColorLevelNumber(
-                        municipality[prefix + "_risk_color"]
-                    )
-                );
-                return;
-            }
-
-            const value = Number(municipality[key]);
-            if (!Number.isFinite(value)) return;
-            const level = value >= 50 ? 4 : value >= 30 ? 3 : value >= 20 ? 2 : value >= 10 ? 1 : 0;
-            strongest = Math.max(strongest, level);
-        });
+        if (municipality.storms_multimodel) {
+            strongest = Math.max(
+                strongest,
+                stormRiskLevel(municipality)
+            );
+        }
 
         const w = String(municipality.wind_risk_level || "green").toLowerCase();
         strongest = Math.max(strongest, windLevel[w] ?? 0);
@@ -5175,103 +6246,6 @@ function temperatureOverviewGroupHtml(
 
 
 
-function windRiskLevelNumber(level) {
-    const levels = {
-        green: 0,
-        yellow: 1,
-        orange: 2,
-        red: 3,
-        purple: 4
-    };
-
-    return levels[
-        String(level || "green").toLowerCase()
-    ] ?? 0;
-}
-
-
-function windOverviewImpactHtml(
-    forecasts,
-    municipalityID
-) {
-    if (!overviewSelectedDate) {
-        return "";
-    }
-
-    const t = translations[currentLanguage];
-
-    let strongestData = null;
-    let strongestLevel = -1;
-
-    forecasts.forEach(forecast => {
-        if (
-            localDateKeyBelgrade(
-                forecast.valid_time
-            ) !== overviewSelectedDate
-        ) {
-            return;
-        }
-
-        const municipality =
-            forecast.municipalities[
-                municipalityID
-            ];
-
-        if (!municipality) {
-            return;
-        }
-
-        const level =
-            windRiskLevelNumber(
-                municipality.wind_risk_level
-            );
-
-        if (level > strongestLevel) {
-            strongestLevel = level;
-            strongestData = municipality;
-        }
-    });
-
-    if (
-        !strongestData
-        || strongestLevel <= 0
-    ) {
-        return "";
-    }
-
-    const impacts =
-        currentLanguage === "sr"
-        ? (strongestData.wind_impacts_sr || "—")
-        : (
-            strongestData.wind_impacts_en
-            || strongestData.wind_impacts_sr
-            || "—"
-        );
-
-    const recommendations =
-        currentLanguage === "sr"
-        ? (strongestData.wind_recommendations_sr || "—")
-        : (
-            strongestData.wind_recommendations_en
-            || strongestData.wind_recommendations_sr
-            || "—"
-        );
-
-    return `
-        <div class="overview-risk">
-            <div class="overview-muted" style="margin-top:7px;">
-                <b>${t.impacts}:</b>
-                ${impacts}
-            </div>
-
-            <div class="overview-muted" style="margin-top:5px;">
-                <b>${t.recommendations}:</b>
-                ${recommendations}
-            </div>
-        </div>
-    `;
-}
-
 
 /* UI CONTRACT FOR HAZARD MODULES:
    Every hazard should provide, where applicable:
@@ -5354,24 +6328,16 @@ function renderOverview(forecasts, feature) {
         return `<div class="overview-group"><div class="overview-group-title">${title}</div>${items}</div>`;
     }
 
-    const stormHtml = buildGroupHtml(
-        t.stormGroup,
-        ["thunder","hail","large_hail","very_large_hail"]
-    );
-
-    const windBaseHtml = buildGroupHtml(
-        t.windGroup,
-        ["wind_10","wind_17","wind_24","wind_28"]
+    const stormHtml = stormOverviewGroupHtml(
+        displayedForecasts,
+        municipalityID
     );
 
     const windHtml =
-        windBaseHtml
-        ? windBaseHtml.replace(
-            "</div>",
-            windOverviewImpactHtml(
-                visibleForecasts,
-                municipalityID
-            ) + "</div>"
+        typeof windV2OverviewGroupHtml === "function"
+        ? windV2OverviewGroupHtml(
+            visibleForecasts,
+            municipalityID
         )
         : "";
 
@@ -6678,10 +7644,6 @@ function updateLanguage() {
     const heatBtnLang = document.getElementById("btn-heat-stress");
     if (heatBtnLang) heatBtnLang.textContent = t.heatStress;
     document.getElementById("btn-wind-risk").textContent = t.windOverall;
-    document.getElementById("btn-wind-10").textContent = t.wind10;
-    document.getElementById("btn-wind-17").textContent = t.wind17;
-    document.getElementById("btn-wind-24").textContent = t.wind24;
-    document.getElementById("btn-wind-28").textContent = t.wind28;
 
     document
         .getElementById(
@@ -7011,6 +7973,51 @@ function updateLegend(
     }
 
     if (
+        currentHazard === "module_risk"
+        && currentModule === "storm"
+    ) {
+        const labels = currentLanguage === "sr"
+            ? [
+                "без значајног ризика од олује",
+                "могућност грмљавине",
+                "повећан ризик од грмљавине, уз могућност града",
+                "висок ризик од грмљавине и града",
+                "изражен ризик од грмљавине и града"
+            ]
+            : [
+                "no significant storm risk",
+                "thunderstorm possible",
+                "increased thunderstorm risk, with hail possible",
+                "high risk of thunderstorms and hail",
+                "pronounced risk of thunderstorms and hail"
+            ];
+
+        const colors = [
+            "#a6d96a",
+            "#ffffbf",
+            "#fdae61",
+            "#d7191c",
+            "#7b3294"
+        ];
+
+        element.innerHTML = `
+            <div class="legend-title">
+                ${currentLanguage === "sr"
+                    ? "ОЛУЈА — степен ризика"
+                    : "STORM — risk level"}
+            </div>
+            ${labels.map((label, i) => `
+                <div class="legend-row">
+                    <span class="legend-box" style="background:${colors[i]}"></span>
+                    ${label}
+                </div>
+            `).join("")}
+            ${legendUnavailableHtml()}
+        `;
+        return;
+    }
+
+    if (
         currentHazard === "overall_risk"
         || currentHazard === "module_risk"
         || currentHazard === "wind_risk_level"
@@ -7019,7 +8026,7 @@ function updateLegend(
             ? ["без значајног ризика", "низак", "умерен", "висок", "веома висок"]
             : ["no significant risk", "low", "moderate", "high", "very high"];
         const colors = ["#a6d96a", "#ffffbf", "#fdae61", "#d7191c", "#7b3294"];
-        const count = currentHazard === "wind_risk_level" ? 4 : 5;
+        const count = 5;
         element.innerHTML = `
             <div class="legend-title">${currentLanguage === "sr" ? "Ниво ризика" : "Risk level"}</div>
             ${labels.slice(0, count).map((label, i) => `

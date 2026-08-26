@@ -166,11 +166,10 @@
 
     <div class="hazard-group-tabs">
         <button
-            class="hazard-group-button"
+            class="hazard-group-button single-module"
             id="storm-group-button"
             type="button">
             <span id="storm-group-label">⛈ ОЛУЈА</span>
-            <span class="arrow">▼</span>
         </button>
 
         <button
@@ -213,7 +212,7 @@
         </button>
     </div>
 
-    <div class="hazard-subcontrols" id="storm-subcontrols">
+    <div class="hazard-subcontrols" id="storm-subcontrols" hidden>
 
         <button
             class="layer-button"
@@ -243,10 +242,6 @@
 
     <div class="hazard-subcontrols" id="wind-subcontrols">
         <button class="layer-button" data-layer="wind_risk_level" id="btn-wind-risk"></button>
-        <button class="layer-button" data-layer="wind_10" id="btn-wind-10"></button>
-        <button class="layer-button" data-layer="wind_17" id="btn-wind-17"></button>
-        <button class="layer-button" data-layer="wind_24" id="btn-wind-24"></button>
-        <button class="layer-button" data-layer="wind_28" id="btn-wind-28"></button>
     </div>
 
     <div class="hazard-subcontrols" id="temperature-subcontrols">
@@ -415,7 +410,9 @@
 <script src="js/hazards/temperature.js"></script>
 <script src="js/hazards/fire.js"></script>
 <script src="js/hazards/environment.js"></script>
-<script src="js/app.js"></script>
+<script src="js/hazards/wind.js"></script>
+<script src="js/app.js?v=storm-impacts-20260826-1"></script>
 <script src="js/ui_polish.js"></script>
+<script src="js/popup_uniform.js?v=stormv2-timeline-20260826-2"></script>
 </body>
 </html>
