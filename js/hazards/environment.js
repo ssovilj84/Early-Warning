@@ -417,48 +417,113 @@ function uvDetailHtml(data, options = {}) {
     }) + expertDetailsHtml(uvTechnicalHtml(data));
 }
 
-function environmentRiskWindows(forecasts, municipalityID, moduleKey) {
-    const filtered = overviewSelectedDate
-        ? forecasts.filter(f => localDateKeyBelgrade(f.valid_time) === overviewSelectedDate)
-        : forecasts;
-
-    const items = filtered
+function environmentRiskWindows(
+    forecasts,
+    municipalityID,
+    moduleKey
+) {
+    const items = forecasts
         .map(forecast => {
-            const data = forecast.municipalities?.[municipalityID];
+            const data =
+                forecast.municipalities?.[
+                    municipalityID
+                ];
+
             if (!data) return null;
-            const available = moduleKey === "air_quality" ? data.air_quality_available : data.uv_available;
+
+            const available =
+                moduleKey === "air_quality"
+                ? data.air_quality_available
+                : data.uv_available;
+
             if (!available) return null;
-            const level = moduleKey === "air_quality" ? airQualityRiskLevel(data) : uvRiskLevel(data);
-            return { forecast, data, level };
+
+            const level =
+                moduleKey === "air_quality"
+                ? airQualityRiskLevel(data)
+                : uvRiskLevel(data);
+
+            return {
+                forecast,
+                data,
+                level
+            };
         })
         .filter(Boolean)
-        .filter(item => overviewShowAll || item.level >= 1);
+        .filter(
+            item =>
+                overviewShowAll
+                || item.level >= 1
+        );
 
     if (!items.length) return [];
 
     const windows = [];
     let current = null;
+
     items.forEach(item => {
         if (!current) {
-            current = { start:item.forecast.valid_time, end:item.forecast.valid_time, strongest:item };
+            current = {
+                start:
+                    item.forecast.valid_time,
+                end:
+                    item.forecast.valid_time,
+                strongest: item
+            };
             return;
         }
-        const prev = new Date(current.end).getTime();
-        const now = new Date(item.forecast.valid_time).getTime();
-        if (now - prev === 3 * 60 * 60 * 1000) {
-            current.end = item.forecast.valid_time;
-            if (item.level > current.strongest.level) current.strongest = item;
+
+        const prev =
+            new Date(current.end).getTime();
+
+        const now =
+            new Date(
+                item.forecast.valid_time
+            ).getTime();
+
+        if (
+            now - prev
+            === 3 * 60 * 60 * 1000
+        ) {
+            current.end =
+                item.forecast.valid_time;
+
+            if (
+                item.level
+                > current.strongest.level
+            ) {
+                current.strongest = item;
+            }
         } else {
             windows.push(current);
-            current = { start:item.forecast.valid_time, end:item.forecast.valid_time, strongest:item };
+            current = {
+                start:
+                    item.forecast.valid_time,
+                end:
+                    item.forecast.valid_time,
+                strongest: item
+            };
         }
     });
-    if (current) windows.push(current);
-    return windows;
+
+    if (current) {
+        windows.push(current);
+    }
+
+    return filterOverviewWindowsForSelectedDate(
+        windows
+    );
 }
 
+
 function airQualityOverviewGroupHtml(forecasts, municipalityID) {
-    const windows = environmentRiskWindows(forecasts, municipalityID, "air_quality");
+    const windows =
+        environmentRiskWindows(
+            forecasts,
+            municipalityID,
+            "air_quality"
+        );
+
     if (!windows.length) return "";
 
     const t = translations[currentLanguage];
@@ -471,24 +536,31 @@ function airQualityOverviewGroupHtml(forecasts, municipalityID) {
             overviewSelectedDate && ir
             ? `
                 <div class="overview-muted" style="margin-top:7px;">
-                    <b>${t.impacts}:</b>
-                    ${ir.impact}
+                    <b>${t.impacts}:</b> ${ir.impact}
                 </div>
                 <div class="overview-muted" style="margin-top:5px;">
-                    <b>${t.recommendations}:</b>
-                    ${ir.recommendation}
+                    <b>${t.recommendations}:</b> ${ir.recommendation}
                 </div>
             `
             : "";
 
         return `
-            <div class="overview-risk">
-                <div class="overview-risk-name">${t.airQualityGroup}</div>
+            <div class="overview-day-block">
                 <div class="overview-period">
-                    ${formatOverviewInterval(window.start, window.end)}
+                    ${formatOverviewInterval(
+                        window.start,
+                        window.end,
+                        {
+                            clipToSelectedDay: true
+                        }
+                    )}
                     — <b>${translatedAqiBand(d)}</b>
-                    · ${t.airEuropeanAqi}: <b>${formatNumber(d.european_aqi, 0)}</b>
-                    · ${t.airDominant}: <b>${translatedPollutantName(d.air_dominant_pollutant)}</b>
+                    · ${t.airEuropeanAqi}:
+                    <b>${formatNumber(d.european_aqi, 0)}</b>
+                    · ${t.airDominant}:
+                    <b>${translatedPollutantName(
+                        d.air_dominant_pollutant
+                    )}</b>
                 </div>
                 ${adviceHtml}
             </div>
@@ -498,13 +570,23 @@ function airQualityOverviewGroupHtml(forecasts, municipalityID) {
     return `
         <div class="overview-group">
             <div class="overview-group-title">${t.airQualityGroup}</div>
-            ${rows}
+            <div class="overview-risk">
+                <div class="overview-risk-name">${t.airQualityGroup}</div>
+                ${rows}
+            </div>
         </div>
     `;
 }
 
+
 function uvOverviewGroupHtml(forecasts, municipalityID) {
-    const windows = environmentRiskWindows(forecasts, municipalityID, "uv");
+    const windows =
+        environmentRiskWindows(
+            forecasts,
+            municipalityID,
+            "uv"
+        );
+
     if (!windows.length) return "";
 
     const t = translations[currentLanguage];
@@ -517,23 +599,27 @@ function uvOverviewGroupHtml(forecasts, municipalityID) {
             overviewSelectedDate && ir
             ? `
                 <div class="overview-muted" style="margin-top:7px;">
-                    <b>${t.impacts}:</b>
-                    ${ir.impact}
+                    <b>${t.impacts}:</b> ${ir.impact}
                 </div>
                 <div class="overview-muted" style="margin-top:5px;">
-                    <b>${t.recommendations}:</b>
-                    ${ir.recommendation}
+                    <b>${t.recommendations}:</b> ${ir.recommendation}
                 </div>
             `
             : "";
 
         return `
-            <div class="overview-risk">
-                <div class="overview-risk-name">${t.uvGroup}</div>
+            <div class="overview-day-block">
                 <div class="overview-period">
-                    ${formatOverviewInterval(window.start, window.end)}
+                    ${formatOverviewInterval(
+                        window.start,
+                        window.end,
+                        {
+                            clipToSelectedDay: true
+                        }
+                    )}
                     — <b>${translatedUvCategory(d)}</b>
-                    · ${t.uvIndex}: <b>${formatNumber(d.uv_index, 1)}</b>
+                    · ${t.uvIndex}:
+                    <b>${formatNumber(d.uv_index, 1)}</b>
                 </div>
                 ${adviceHtml}
             </div>
@@ -543,10 +629,14 @@ function uvOverviewGroupHtml(forecasts, municipalityID) {
     return `
         <div class="overview-group">
             <div class="overview-group-title">${t.uvGroup}</div>
-            ${rows}
+            <div class="overview-risk">
+                <div class="overview-risk-name">${t.uvGroup}</div>
+                ${rows}
+            </div>
         </div>
     `;
 }
+
 
 /* MeteoRisk M1.1.7 - ENVIRONMENT OVERVIEW IMPACTS
    UI contract:

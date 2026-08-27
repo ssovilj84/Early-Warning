@@ -19,6 +19,100 @@ const GEFS_DIR =
 
 const METEORISK_TIME_ZONE = "Europe/Belgrade";
 
+/*
+   Europe/Belgrade is an IANA time-zone identifier, not a fixed UTC offset.
+   Intl.DateTimeFormat therefore applies CET/CEST automatically.
+
+   Self-check below guards both 2026 DST transitions:
+   spring: +01 -> +02
+   autumn: +02 -> +01
+*/
+function meteoriskTimeZoneOffsetMinutes(isoString) {
+    const date = new Date(isoString);
+    if (!Number.isFinite(date.getTime())) return null;
+
+    const parts = new Intl.DateTimeFormat(
+        "en-CA",
+        {
+            timeZone: METEORISK_TIME_ZONE,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+        }
+    ).formatToParts(date);
+
+    const values = {};
+    parts.forEach(part => {
+        if (part.type !== "literal") {
+            values[part.type] = part.value;
+        }
+    });
+
+    const localAsUtc = Date.UTC(
+        Number(values.year),
+        Number(values.month) - 1,
+        Number(values.day),
+        Number(values.hour),
+        Number(values.minute),
+        Number(values.second)
+    );
+
+    return Math.round(
+        (localAsUtc - date.getTime())
+        / (60 * 1000)
+    );
+}
+
+function meteoriskDstSelfCheck() {
+    const offsets = {
+        springBefore:
+            meteoriskTimeZoneOffsetMinutes(
+                "2026-03-29T00:30:00Z"
+            ),
+        springAfter:
+            meteoriskTimeZoneOffsetMinutes(
+                "2026-03-29T01:30:00Z"
+            ),
+        autumnBefore:
+            meteoriskTimeZoneOffsetMinutes(
+                "2026-10-25T00:30:00Z"
+            ),
+        autumnAfter:
+            meteoriskTimeZoneOffsetMinutes(
+                "2026-10-25T01:30:00Z"
+            )
+    };
+
+    const ok = (
+        offsets.springBefore === 60
+        && offsets.springAfter === 120
+        && offsets.autumnBefore === 120
+        && offsets.autumnAfter === 60
+    );
+
+    if (ok) {
+        console.info(
+            "MeteoRisk DST QC PASS",
+            METEORISK_TIME_ZONE,
+            offsets
+        );
+    } else {
+        console.warn(
+            "MeteoRisk DST QC WARNING",
+            METEORISK_TIME_ZONE,
+            offsets
+        );
+    }
+
+    return ok;
+}
+
+meteoriskDstSelfCheck();
+
 /* MeteoRisk STORMS multimodel.
    The existing five-day frontend (+003 to +120 h) is preserved.
    In the current development phase the final multimodel STORMS product
@@ -222,6 +316,32 @@ let allForecastData = null;
 let overviewFeature = null;
 let overviewShowAll = false;
 let overviewSelectedDate = null;
+
+/*
+   FIVE-DAY OVERVIEW PERFORMANCE CACHE
+
+   The public timeline/data are static for the lifetime of one page load.
+   Therefore the fully merged timeline can be cached after the first build.
+
+   - slot cache: prevents rebuilding an already merged 3-hour term
+   - build promise: prevents duplicate simultaneous 5-day builds
+   - overview cache: makes calendar/date/language re-rendering immediate
+*/
+const OVERVIEW_LOAD_CONCURRENCY = 6;
+
+const timelineSlotDataCache = new Map();
+const timelineSlotBuildPromiseCache = new Map();
+
+let timelineOverviewDataCache = null;
+let timelineOverviewBuildPromise = null;
+
+
+function resetTimelineOverviewCache() {
+    timelineSlotDataCache.clear();
+    timelineSlotBuildPromiseCache.clear();
+    timelineOverviewDataCache = null;
+    timelineOverviewBuildPromise = null;
+}
 
 /* User-facing forecast cycle reference.
    It is derived from the multimodel reference date and normalized to 00 UTC,
@@ -580,23 +700,77 @@ const translations = {
    MAP
    ============================================================ */
 
+/*
+   Central map-view configuration.
+   Keep this country-specific in one place so a future country selector can
+   switch center/zoom/bounds without rewriting map logic.
+*/
+const MAP_VIEW_CONFIG = Object.freeze({
+    countryCode: "RS",
+
+    center: [
+        44.0,
+        20.8
+    ],
+
+    initialZoom: 7,
+
+    /*
+       Zoom 6 still shows Serbia together with neighbouring countries,
+       but prevents zooming out to a continent/world overview.
+    */
+    minZoom: 6,
+
+    maxZoom: 19,
+
+    /*
+       Navigation envelope: Serbia + wider immediate surroundings.
+       These are UI navigation bounds only; they do not change forecast data.
+    */
+    maxBounds: [
+        [39.0, 14.0],
+        [49.5, 27.5]
+    ],
+
+    municipalitySearchMaxZoom: 11,
+    geolocationZoom: 10
+});
+
+
 const map =
     L.map(
         "map",
         {
-            zoomControl: true
+            zoomControl: true,
+
+            minZoom:
+                MAP_VIEW_CONFIG.minZoom,
+
+            maxZoom:
+                MAP_VIEW_CONFIG.maxZoom,
+
+            maxBounds:
+                MAP_VIEW_CONFIG.maxBounds,
+
+            /*
+               1.0 makes the outer navigation bounds firm instead of letting
+               touch/mouse dragging pull the map far outside the allowed area.
+            */
+            maxBoundsViscosity: 1.0
         }
     )
     .setView(
-        [44.0, 20.8],
-        7
+        MAP_VIEW_CONFIG.center,
+        MAP_VIEW_CONFIG.initialZoom
     );
 
 
 L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
-        maxZoom: 19,
+        maxZoom:
+            MAP_VIEW_CONFIG.maxZoom,
+
         attribution:
             "&copy; OpenStreetMap contributors"
     }
@@ -2061,6 +2235,12 @@ function emptyMunicipalityData() {
 
 
 async function buildTimelineSlots() {
+    /*
+       Any timeline rebuild invalidates merged slot/overview caches.
+       In normal operation this runs once at page initialization.
+    */
+    resetTimelineOverviewCache();
+
     const forecasts = await loadAllForecasts();
     const now = new Date();
 
@@ -2252,7 +2432,10 @@ async function buildTimelineSlots() {
 }
 
 
-async function dataForTimelineSlot(index) {
+async function dataForTimelineSlot(
+    index,
+    options = {}
+) {
     if (!timelineSlots.length) {
         return null;
     }
@@ -2266,35 +2449,129 @@ async function dataForTimelineSlot(index) {
             )
         );
 
+    const updateGlobalForecastHour =
+        options.updateGlobalForecastHour !== false;
+
     const slot =
         timelineSlots[safeIndex];
 
-    /* Public +hour follows the actual forecast/timeline mapping.  Missing
-       3-hour products are interpolated from the nearest real forecast slot,
-       so a timeline-only slot is never displayed as a false +000 h. */
-    currentForecastHour =
-        timelineLeadHourForIndex(safeIndex);
-
-    let data;
-
-    if (
-        slot.kind === "forecast"
-        && allForecastData
-        && allForecastData[slot.data_index]
-    ) {
-        data = structuredClone(
-            allForecastData[slot.data_index]
+    /*
+       IMPORTANT FOR PARALLEL OVERVIEW BUILD:
+       lead time is LOCAL to this slot. Do not use the mutable global
+       currentForecastHour while several slots are being merged at once.
+    */
+    const slotForecastHour =
+        timelineLeadHourForIndex(
+            safeIndex
         );
 
-        /* Re-attach OLUJA by the authoritative public slot lead. */
-        if (Number.isFinite(Number(currentForecastHour))) {
-            await applyMultimodelStormsOverlay(
-                data,
-                Number(currentForecastHour)
+    function applyDisplayLeadFromCache(cached) {
+        if (
+            updateGlobalForecastHour
+            && cached
+            && Number.isFinite(
+                Number(
+                    cached._meteorisk_display_forecast_hour
+                )
+            )
+        ) {
+            currentForecastHour =
+                Number(
+                    cached._meteorisk_display_forecast_hour
+                );
+        }
+    }
+
+    if (timelineSlotDataCache.has(safeIndex)) {
+        const cached =
+            timelineSlotDataCache.get(
+                safeIndex
+            );
+
+        applyDisplayLeadFromCache(cached);
+        return cached;
+    }
+
+    if (timelineSlotBuildPromiseCache.has(safeIndex)) {
+        const cached =
+            await timelineSlotBuildPromiseCache.get(
+                safeIndex
+            );
+
+        applyDisplayLeadFromCache(cached);
+        return cached;
+    }
+
+    const buildPromise = (async () => {
+        let data;
+
+        if (
+            slot.kind === "forecast"
+            && allForecastData
+            && allForecastData[slot.data_index]
+        ) {
+            data = structuredClone(
+                allForecastData[slot.data_index]
+            );
+
+        } else {
+            data = {
+                valid_time: slot.valid_time,
+                model_run: null,
+                municipalities:
+                    emptyMunicipalityData(),
+                storms_multimodel: false,
+                storms_available: false,
+                wind_available: false,
+                temperature_multimodel: false,
+                temperature_available: false,
+                heat_stress_multimodel: false,
+                fire_fwi_available: false,
+                fire_hdw_available: false,
+                fire_available: false,
+                air_quality_available: false,
+                uv_available: false
+            };
+        }
+
+        /*
+           Independent hazard overlays are safe to load concurrently.
+           Browser connection limits still provide a natural network cap,
+           while the outer overview builder limits the number of active slots.
+        */
+        const overlayTasks = [];
+
+        if (
+            Number.isFinite(
+                Number(slotForecastHour)
+            )
+        ) {
+            overlayTasks.push(
+                applyMultimodelStormsOverlay(
+                    data,
+                    Number(slotForecastHour)
+                )
             );
         }
 
-        await applyWindV2Overlay(data);
+        overlayTasks.push(
+            applyWindV2Overlay(data),
+            applyTemperatureOverlay(data),
+            applyHeatStressTimelineOverlay(data),
+            applyFireOverlay(
+                data,
+                Number.isFinite(
+                    Number(slotForecastHour)
+                )
+                ? Number(slotForecastHour)
+                : null
+            ),
+            applyEnvironmentOverlay(data)
+        );
+
+        await Promise.all(
+            overlayTasks
+        );
 
         data.storms_available =
             Boolean(
@@ -2302,13 +2579,6 @@ async function dataForTimelineSlot(index) {
                 && data.storms_multimodel_matches > 0
             );
 
-        /* Daily Tmax and exact 3-hour thermal stress are attached using
-           the same overlay logic as the main map. */
-        await applyTemperatureOverlay(data);
-        await applyHeatStressTimelineOverlay(data);
-        await applyFireOverlay(data);
-        await applyEnvironmentOverlay(data);
-
         data.temperature_available =
             Boolean(
                 (
@@ -2322,89 +2592,178 @@ async function dataForTimelineSlot(index) {
                 )
             );
 
-    } else {
-        data = {
-            valid_time: slot.valid_time,
-            model_run: null,
-            municipalities:
-                emptyMunicipalityData(),
-            storms_multimodel: false,
-            storms_available: false,
-            wind_available: false,
-            temperature_multimodel: false,
-            temperature_available: false,
-            heat_stress_multimodel: false,
-            fire_fwi_available: false,
-            fire_hdw_available: false,
-            fire_available: false,
-            air_quality_available: false,
-            uv_available: false
-        };
-
-        /* timeline_only is normal when OLUJA v2 is newer than the legacy
-           core GEFS cache. Attach the validated OLUJA payload here too. */
-        if (Number.isFinite(Number(currentForecastHour))) {
-            await applyMultimodelStormsOverlay(
-                data,
-                Number(currentForecastHour)
-            );
+        if (!data.storms_available) {
+            data.storms_multimodel = false;
         }
 
-        await applyWindV2Overlay(data);
-        await applyTemperatureOverlay(data);
-        await applyHeatStressTimelineOverlay(data);
-        await applyFireOverlay(data);
-        await applyEnvironmentOverlay(data);
+        /*
+           Timeline remains authoritative. Never keep a stale inherited
+           valid time from an older core file.
+        */
+        data.valid_time =
+            slot.valid_time;
 
-        data.temperature_available =
-            Boolean(
-                (
-                    data.temperature_multimodel
-                    && data.temperature_multimodel_matches > 0
+        const effectiveForecastHour =
+            (
+                data.wind_available
+                && Number.isFinite(
+                    Number(data.wind_forecast_hour)
                 )
-                ||
-                (
-                    data.heat_stress_multimodel
-                    && data.heat_stress_multimodel_matches > 0
+            )
+            ? Number(
+                data.wind_forecast_hour
+            )
+            : (
+                Number.isFinite(
+                    Number(slotForecastHour)
                 )
+                ? Number(slotForecastHour)
+                : null
             );
+
+        /*
+           Private frontend helper field only. It is never published back to
+           forecast JSON and is used solely to restore the correct +hour when
+           a cached slot becomes the active map slot.
+        */
+        data._meteorisk_display_forecast_hour =
+            effectiveForecastHour;
+
+        timelineSlotDataCache.set(
+            safeIndex,
+            data
+        );
+
+        return data;
+    })();
+
+    timelineSlotBuildPromiseCache.set(
+        safeIndex,
+        buildPromise
+    );
+
+    try {
+        const data =
+            await buildPromise;
+
+        applyDisplayLeadFromCache(data);
+        return data;
+
+    } finally {
+        timelineSlotBuildPromiseCache.delete(
+            safeIndex
+        );
+    }
+}
+
+
+async function mapWithConcurrency(
+    items,
+    limit,
+    worker
+) {
+    const results =
+        new Array(items.length);
+
+    let nextIndex = 0;
+
+    async function runWorker() {
+        while (true) {
+            const index =
+                nextIndex;
+
+            nextIndex += 1;
+
+            if (index >= items.length) {
+                return;
+            }
+
+            results[index] =
+                await worker(
+                    items[index],
+                    index
+                );
+        }
     }
 
-    if (!data.storms_available) {
-        data.storms_multimodel = false;
-    }
+    const workerCount =
+        Math.max(
+            1,
+            Math.min(
+                Number(limit) || 1,
+                items.length
+            )
+        );
 
-    /* The timeline is authoritative. Never leave an inherited stale valid time. */
-    data.valid_time = slot.valid_time;
+    await Promise.all(
+        Array.from(
+            { length: workerCount },
+            () => runWorker()
+        )
+    );
 
-    if (
-        data.wind_available
-        && Number.isFinite(Number(data.wind_forecast_hour))
-    ) {
-        currentForecastHour = Number(data.wind_forecast_hour);
-    }
-
-    return data;
+    return results;
 }
 
 
 async function buildTimelineOverviewData() {
-    const results = [];
-
-    for (
-        let index = 0;
-        index < timelineSlots.length;
-        index += 1
-    ) {
-        const data =
-            await dataForTimelineSlot(index);
-
-        if (data) {
-            results.push(data);
-        }
+    if (timelineOverviewDataCache) {
+        return timelineOverviewDataCache;
     }
 
-    return results;
+    if (timelineOverviewBuildPromise) {
+        return timelineOverviewBuildPromise;
+    }
+
+    timelineOverviewBuildPromise = (async () => {
+        const started =
+            performance.now();
+
+        const indices =
+            timelineSlots.map(
+                (_, index) => index
+            );
+
+        const results =
+            await mapWithConcurrency(
+                indices,
+                OVERVIEW_LOAD_CONCURRENCY,
+                index =>
+                    dataForTimelineSlot(
+                        index,
+                        {
+                            updateGlobalForecastHour:
+                                false
+                        }
+                    )
+            );
+
+        timelineOverviewDataCache =
+            results.filter(Boolean);
+
+        const elapsed =
+            Math.round(
+                performance.now()
+                - started
+            );
+
+        console.info(
+            "MeteoRisk five-day overview cache ready:",
+            timelineOverviewDataCache.length,
+            "slots in",
+            elapsed,
+            "ms"
+        );
+
+        return timelineOverviewDataCache;
+    })();
+
+    try {
+        return await timelineOverviewBuildPromise;
+
+    } finally {
+        timelineOverviewBuildPromise = null;
+    }
 }
 
 
@@ -2454,8 +2813,13 @@ async function showTimelineSlot(index) {
         );
     }
 
-    /* If the municipality overview is open, keep it synchronized with the
-       same moving timeline without requiring a new search/click. */
+    /*
+       If the municipality overview is open, keep it synchronized with the
+       same moving timeline without requiring a new search/click.
+
+       buildTimelineOverviewData() is cache-backed: moving the slider no
+       longer downloads/rebuilds all 40 terms.
+    */
     if (
         overviewFeature
         && document.getElementById("overview-panel").classList.contains("open")
@@ -2716,9 +3080,7 @@ function multimodelStormDetailHtml(
             </div>
 
             <div class="popup-row">
-                ${currentLanguage === "sr"
-                    ? "Финални сигнал"
-                    : "Final signal"}:
+                ${stormPublicSignalLabel(hazardKey)}:
                 <b>${formatProbability(signal)}</b>
             </div>
 
@@ -2740,6 +3102,13 @@ function multimodelStormDetailHtml(
                 data,
                 hazardKey
             )}
+
+            <div class="popup-note">
+                <b>${currentLanguage === "sr"
+                    ? "Просторни обухват:"
+                    : "Spatial scope:"}</b>
+                ${stormSpatialScopeNote()}
+            </div>
 
             <div class="popup-note">
                 ${modeNote}
@@ -3610,30 +3979,91 @@ function stormImpactRecommendation(data) {
 }
 
 
+function stormPublicSignalLabel(
+    hazardKey
+) {
+    const sr = {
+        thunder:
+            "Могућност грмљавинског развоја",
+
+        hail:
+            "Могућност града уз грмљавински развој",
+
+        large_hail:
+            "Могућност крупног града ≥ 2 cm уз грмљавински развој",
+
+        very_large_hail:
+            "Могућност веома крупног града ≥ 5 cm уз грмљавински развој"
+    };
+
+    const en = {
+        thunder:
+            "Possibility of thunderstorm development",
+
+        hail:
+            "Possibility of hail with thunderstorm development",
+
+        large_hail:
+            "Possibility of large hail ≥ 2 cm with thunderstorm development",
+
+        very_large_hail:
+            "Possibility of very large hail ≥ 5 cm with thunderstorm development"
+    };
+
+    return (
+        currentLanguage === "sr"
+        ? sr
+        : en
+    )[hazardKey] || hazardKey;
+}
+
+
+function stormSpatialScopeNote() {
+    return currentLanguage === "sr"
+        ? "Процена се односи на могућност појаве негде на територији изабране општине или у појасу до 25 km од њене границе. Појава може бити локална и не значи да ће захватити сваку локацију у општини."
+        : "The assessment refers to the possibility of the phenomenon occurring somewhere within the selected municipality or within a zone up to 25 km beyond its boundary. The phenomenon may be local and does not mean that every location in the municipality will be affected.";
+}
+
+
 function stormExpertSignalsHtml(data) {
-    if (!data || !data.storms_multimodel) return "";
+    if (
+        !data
+        || !data.storms_multimodel
+    ) {
+        return "";
+    }
 
     const rows = [
-        ["thunder", currentLanguage === "sr" ? "Грмљавина" : "Thunderstorm"],
-        ["hail", currentLanguage === "sr" ? "Град" : "Hail"],
-        ["large_hail", currentLanguage === "sr" ? "Крупан град ≥ 2 cm" : "Large hail ≥ 2 cm"],
-        ["very_large_hail", currentLanguage === "sr" ? "Веома крупан град ≥ 5 cm" : "Very large hail ≥ 5 cm"]
+        "thunder",
+        "hail",
+        "large_hail",
+        "very_large_hail"
     ];
 
-    return rows.map(([key, label]) => {
-        const prefix = stormHazardPrefix(key);
-        const gefs = data[prefix + "_gefs"];
-        const icon = data[prefix + "_icon"];
+    return rows.map(key => {
+        const prefix =
+            stormHazardPrefix(key);
 
-        const modelLine = Number.isFinite(Number(icon))
+        const gefs =
+            data[prefix + "_gefs"];
+
+        const icon =
+            data[prefix + "_icon"];
+
+        const modelLine =
+            Number.isFinite(Number(icon))
             ? `GEFS ${formatProbability(gefs)} · ICON-EU EPS ${formatProbability(icon)}`
             : `GEFS ${formatProbability(gefs)} · ICON-EU EPS —`;
 
         return `
             <div class="popup-row">
-                ${label}: <b>${formatProbability(data[key])}</b>
+                ${stormPublicSignalLabel(key)}:
+                <b>${formatProbability(data[key])}</b>
             </div>
-            <div class="popup-note">${modelLine}</div>
+
+            <div class="popup-note">
+                ${modelLine}
+            </div>
         `;
     }).join("");
 }
@@ -4022,6 +4452,13 @@ function modulePopupContent(data, name, moduleKey) {
             </div>
 
             <div class="popup-note">
+                <b>${currentLanguage === "sr"
+                    ? "Просторни обухват:"
+                    : "Spatial scope:"}</b>
+                ${stormSpatialScopeNote()}
+            </div>
+
+            <div class="popup-note">
                 ${stormPublicThresholdNote()}
             </div>
         `;
@@ -4244,9 +4681,36 @@ function popupContentCore(
         <div class="popup-section">${hazardLabels[currentHazard] || currentHazard}</div>
 
         <div class="popup-row">
-            ${currentLanguage === "sr" ? "Ансамбл сигнал" : "Ensemble signal"}:
+            ${[
+                "thunder",
+                "hail",
+                "large_hail",
+                "very_large_hail"
+            ].includes(currentHazard)
+                ? stormPublicSignalLabel(currentHazard)
+                : (
+                    currentLanguage === "sr"
+                    ? "Ансамбл сигнал"
+                    : "Ensemble signal"
+                )}:
             <b>${formatProbability(data[currentHazard])}</b>
         </div>
+
+        ${[
+            "thunder",
+            "hail",
+            "large_hail",
+            "very_large_hail"
+        ].includes(currentHazard)
+            ? `
+                <div class="popup-note">
+                    <b>${currentLanguage === "sr"
+                        ? "Просторни обухват:"
+                        : "Spatial scope:"}</b>
+                    ${stormSpatialScopeNote()}
+                </div>
+            `
+            : ""}
 
         <div class="popup-section">${t.modelParameters}</div>
 
@@ -5408,20 +5872,78 @@ function formatOverviewMoment(isoString) {
 }
 
 
-function formatOverviewInterval(startIso, endIso) {
-    if (startIso === endIso) {
-        return formatOverviewMoment(startIso);
+function overviewWindowIntersectsSelectedDate(
+    startIso,
+    endIso
+) {
+    if (!overviewSelectedDate) {
+        return true;
+    }
+
+    const startKey =
+        localDateKeyBelgrade(startIso);
+
+    const endKey =
+        localDateKeyBelgrade(endIso);
+
+    if (!startKey || !endKey) {
+        return false;
+    }
+
+    return (
+        startKey <= overviewSelectedDate
+        && endKey >= overviewSelectedDate
+    );
+}
+
+
+function filterOverviewWindowsForSelectedDate(
+    windows
+) {
+    if (!overviewSelectedDate) {
+        return windows;
+    }
+
+    return windows.filter(
+        window =>
+            overviewWindowIntersectsSelectedDate(
+                window.start,
+                window.end
+            )
+    );
+}
+
+
+function formatOverviewInterval(
+    startIso,
+    endIso,
+    options = {}
+) {
+    if (!startIso || !endIso) {
+        return "—";
     }
 
     const start = new Date(startIso);
     const end = new Date(endIso);
-    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+
+    if (
+        !Number.isFinite(start.getTime())
+        || !Number.isFinite(end.getTime())
+    ) {
         return "—";
     }
 
-    const startKey = localDateKeyBelgrade(startIso);
-    const endKey = localDateKeyBelgrade(endIso);
-    const locale = currentLanguage === "sr" ? "sr-RS" : "en-GB";
+    const startKey =
+        localDateKeyBelgrade(startIso);
+
+    const endKey =
+        localDateKeyBelgrade(endIso);
+
+    const locale =
+        currentLanguage === "sr"
+        ? "sr-RS"
+        : "en-GB";
+
     const timeOptions = {
         timeZone: METEORISK_TIME_ZONE,
         hour: "2-digit",
@@ -5429,18 +5951,91 @@ function formatOverviewInterval(startIso, endIso) {
         hour12: false
     };
 
-    if (startKey && startKey === endKey) {
-        return formatOverviewDateKey(startKey)
+    const clipToSelectedDay =
+        Boolean(
+            options.clipToSelectedDay
+            && overviewSelectedDate
+        );
+
+    /*
+       IMPORTANT:
+       The 3-hour forecast grid can have first local timestamps at 01/02 h.
+       If a risk window already existed in the previous forecast term before
+       local midnight, the selected-day display is clipped to 00:00.
+       No model value is invented: continuity must exist in the previous term.
+    */
+    if (
+        clipToSelectedDay
+        && overviewWindowIntersectsSelectedDate(
+            startIso,
+            endIso
+        )
+    ) {
+        const startText =
+            startKey < overviewSelectedDate
+            ? "00:00"
+            : start.toLocaleTimeString(
+                locale,
+                timeOptions
+            );
+
+        const endText =
+            endKey > overviewSelectedDate
+            ? "24:00"
+            : end.toLocaleTimeString(
+                locale,
+                timeOptions
+            );
+
+        return (
+            formatOverviewDateKey(
+                overviewSelectedDate
+            )
             + " "
-            + start.toLocaleTimeString(locale, timeOptions)
+            + startText
             + "–"
-            + end.toLocaleTimeString(locale, timeOptions)
-            + (currentLanguage === "sr" ? " локално" : " local");
+            + endText
+            + (
+                currentLanguage === "sr"
+                ? " локално"
+                : " local"
+            )
+        );
     }
 
-    return formatOverviewMoment(startIso)
+    if (startIso === endIso) {
+        return formatOverviewMoment(startIso);
+    }
+
+    if (
+        startKey
+        && startKey === endKey
+    ) {
+        return (
+            formatOverviewDateKey(startKey)
+            + " "
+            + start.toLocaleTimeString(
+                locale,
+                timeOptions
+            )
+            + "–"
+            + end.toLocaleTimeString(
+                locale,
+                timeOptions
+            )
+            + (
+                currentLanguage === "sr"
+                ? " локално"
+                : " local"
+            )
+        );
+    }
+
+    return (
+        formatOverviewMoment(startIso)
         + " – "
-        + formatOverviewMoment(endIso);
+        + formatOverviewMoment(endIso)
+    );
 }
 
 
@@ -5589,18 +6184,46 @@ function buildStormPublicWindows(forecasts, municipalityID) {
 }
 
 
-function stormOverviewGroupHtml(forecasts, municipalityID) {
+function stormOverviewGroupHtml(
+    forecasts,
+    municipalityID
+) {
     const t = translations[currentLanguage];
-    const result = buildStormPublicWindows(forecasts, municipalityID);
 
-    if (result.windows.length === 0 && !overviewShowAll) {
+    /*
+       Windows are built from the full timeline, including the term before
+       local midnight. Only the rendered interval is clipped to the selected
+       calendar date.
+    */
+    const result =
+        buildStormPublicWindows(
+            forecasts,
+            municipalityID
+        );
+
+    const shownWindows =
+        filterOverviewWindowsForSelectedDate(
+            result.windows
+        );
+
+    if (
+        shownWindows.length === 0
+        && !overviewShowAll
+    ) {
         return "";
     }
 
-    const periodsHtml = result.windows.length
-        ? result.windows.map(window => `
+    const periodsHtml =
+        shownWindows.length
+        ? shownWindows.map(window => `
             <div class="overview-period">
-                ${formatOverviewInterval(window.start, window.end)}
+                ${formatOverviewInterval(
+                    window.start,
+                    window.end,
+                    {
+                        clipToSelectedDay: true
+                    }
+                )}
                 — <b>${window.category}</b>
             </div>
         `).join("")
@@ -5618,27 +6241,52 @@ function stormOverviewGroupHtml(forecasts, municipalityID) {
         let strongest = null;
 
         forecasts.forEach(forecast => {
-            const data = forecast.municipalities[municipalityID];
-
-            if (!data || !data.storms_multimodel) {
+            if (
+                localDateKeyBelgrade(
+                    forecast.valid_time
+                ) !== overviewSelectedDate
+            ) {
                 return;
             }
 
-            const level = stormRiskLevel(data);
+            const data =
+                forecast.municipalities[
+                    municipalityID
+                ];
 
-            if (!strongest || level > strongest.level) {
+            if (
+                !data
+                || !data.storms_multimodel
+            ) {
+                return;
+            }
+
+            const level =
+                stormRiskLevel(data);
+
+            if (
+                !strongest
+                || level > strongest.level
+            ) {
                 strongest = {
                     data,
                     level,
-                    valid_time: forecast.valid_time
+                    valid_time:
+                        forecast.valid_time
                 };
             }
         });
 
         if (strongest) {
-            const ir = stormImpactRecommendation(strongest.data);
+            const ir =
+                stormImpactRecommendation(
+                    strongest.data
+                );
 
-            if (ir.impact || ir.recommendation) {
+            if (
+                ir.impact
+                || ir.recommendation
+            ) {
                 detailHtml = `
                     <div class="overview-muted" style="margin-top:7px;">
                         <b>${t.impacts}:</b>
@@ -5675,8 +6323,6 @@ function stormOverviewGroupHtml(forecasts, municipalityID) {
         </div>
     `;
 }
-
-
 
 
 function overviewRiskName(key) {
@@ -5784,93 +6430,147 @@ function monthCalendarHtml(year, month, activeDates, forecasts, municipalityID) 
     return `<div class="overview-calendar"><div class="overview-calendar-title">${monthTitle}</div><div class="overview-calendar-grid">${cells}</div></div>`;
 }
 
-function overviewCalendarsHtml(forecasts, municipalityID) {
+function overviewCalendarsHtml(
+    forecasts,
+    municipalityID
+) {
     if (!timelineSlots.length) {
         return "";
     }
 
-    /* The calendar is a projection of the SAME timeline shown under the map.
-       Therefore every local date represented by timelineSlots is active,
-       regardless of which individual hazard has data on that date. */
+    /*
+       The calendar is a projection of the SAME local-time timeline shown
+       under the map. Render only months that actually contain an active
+       forecast date.
+
+       Normal case:
+         all available dates are in one month -> one calendar.
+
+       Month transition:
+         available dates cross a month boundary -> two calendars.
+    */
     const activeDates =
         new Set(
-            timelineSlots.map(
-                slot =>
-                    localDateKeyBelgrade(
-                        slot.valid_time
-                    )
-            )
+            timelineSlots
+                .map(
+                    slot =>
+                        localDateKeyBelgrade(
+                            slot.valid_time
+                        )
+                )
+                .filter(Boolean)
         );
 
-    const firstActiveDate =
+    const sortedActiveDates =
         Array.from(activeDates)
-            .sort()[0];
+            .sort();
 
-    if (!firstActiveDate) {
+    if (!sortedActiveDates.length) {
         return "";
     }
 
-    const firstForecastDate =
-        new Date(
-            firstActiveDate
-            + "T00:00:00Z"
-        );
+    const months = [];
+    const monthKeys = new Set();
 
-    const y1 =
-        firstForecastDate.getUTCFullYear();
+    sortedActiveDates.forEach(dateKey => {
+        const [
+            yearText,
+            monthText
+        ] = dateKey.split("-");
 
-    const m1 =
-        firstForecastDate.getUTCMonth();
+        const year =
+            Number(yearText);
 
-    const second =
-        new Date(
-            Date.UTC(
-                y1,
-                m1 + 1,
-                1
-            )
-        );
+        const month =
+            Number(monthText) - 1;
+
+        if (
+            !Number.isInteger(year)
+            || !Number.isInteger(month)
+        ) {
+            return;
+        }
+
+        const monthKey =
+            year
+            + "-"
+            + String(month + 1)
+                .padStart(2, "0");
+
+        if (!monthKeys.has(monthKey)) {
+            monthKeys.add(monthKey);
+            months.push({
+                year,
+                month
+            });
+        }
+    });
+
+    if (!months.length) {
+        return "";
+    }
+
+    /*
+       A five-day MeteoRisk horizon can normally span at most two calendar
+       months. Slice defensively so an unexpected malformed timeline cannot
+       create an oversized calendar panel.
+    */
+    const visibleMonths =
+        months.slice(0, 2);
 
     const t =
         translations[currentLanguage];
 
-    const legendClasses =
-        [
-            "risk-green",
-            "risk-yellow",
-            "risk-orange",
-            "risk-red",
-            "risk-purple"
-        ];
+    const legendClasses = [
+        "risk-green",
+        "risk-yellow",
+        "risk-orange",
+        "risk-red",
+        "risk-purple"
+    ];
+
+    const legendColors = [
+        "#78b943",
+        "#d9cf35",
+        "#ed8d35",
+        "#d7191c",
+        "#7b3294"
+    ];
 
     const legend =
         t.riskLevels.map(
             (label, i) =>
-                `<span><i class="overview-calendar-dot ${legendClasses[i]}" style="border-color:${["#78b943","#d9cf35","#ed8d35","#d7191c","#7b3294"][i]}"></i>${label}</span>`
+                `<span><i class="overview-calendar-dot ${legendClasses[i]}" style="border-color:${legendColors[i]}"></i>${label}</span>`
         ).join("");
 
+    const calendars =
+        visibleMonths.map(
+            item =>
+                monthCalendarHtml(
+                    item.year,
+                    item.month,
+                    activeDates,
+                    forecasts,
+                    municipalityID
+                )
+        ).join("");
+
+    const layoutClass =
+        visibleMonths.length === 1
+        ? " single-month"
+        : " two-months";
+
     return `
-        <div class="overview-calendars">
-            ${monthCalendarHtml(
-                y1,
-                m1,
-                activeDates,
-                forecasts,
-                municipalityID
-            )}
-            ${monthCalendarHtml(
-                second.getUTCFullYear(),
-                second.getUTCMonth(),
-                activeDates,
-                forecasts,
-                municipalityID
-            )}
+        <div class="overview-calendars${layoutClass}">
+            ${calendars}
         </div>
+
         <div class="overview-calendar-legend">
             ${legend}
         </div>
     `;
 }
+
 
 function formatOverviewDateKey(dateKey) {
     const [y,m,d] = dateKey.split("-");
@@ -5886,15 +6586,6 @@ function heatStressOverviewItemHtml(
 
     const slots = forecasts
         .filter(forecast => {
-            if (
-                overviewSelectedDate
-                &&
-                localDateKeyBelgrade(forecast.valid_time)
-                !== overviewSelectedDate
-            ) {
-                return false;
-            }
-
             const municipality =
                 forecast.municipalities[municipalityID];
 
@@ -5985,8 +6676,13 @@ function heatStressOverviewItemHtml(
 
     windows.push(current);
 
+    const shownWindows =
+        filterOverviewWindowsForSelectedDate(
+            windows
+        );
+
     const periodsHtml =
-        windows.map(window => {
+        shownWindows.map(window => {
             const data =
                 window.strongest.data;
 
@@ -5999,7 +6695,10 @@ function heatStressOverviewItemHtml(
                 <div class="overview-period">
                     ${formatOverviewInterval(
                         window.start,
-                        window.end
+                        window.end,
+                        {
+                            clipToSelectedDay: true
+                        }
                     )}
                     — <b>${category}</b>
                 </div>
@@ -6010,13 +6709,20 @@ function heatStressOverviewItemHtml(
 
     if (overviewSelectedDate) {
         const strongest =
-            significant.reduce(
-                (best, item) =>
-                    !best || item.level > best.level
-                    ? item
-                    : best,
-                null
-            );
+            significant
+                .filter(
+                    item =>
+                        localDateKeyBelgrade(
+                            item.forecast.valid_time
+                        ) === overviewSelectedDate
+                )
+                .reduce(
+                    (best, item) =>
+                        !best || item.level > best.level
+                        ? item
+                        : best,
+                    null
+                );
 
         if (strongest) {
             const data = strongest.data;
@@ -6138,19 +6844,13 @@ function temperatureOverviewGroupHtml(
             return;
         }
 
-        /* One daily Tmax product per local calendar date. */
         if (!byDate.has(dateKey)) {
-            byDate.set(
-                dateKey,
-                municipality
-            );
+            byDate.set(dateKey, municipality);
         }
     });
 
     const dates =
-        Array.from(
-            byDate.keys()
-        )
+        Array.from(byDate.keys())
         .sort()
         .filter(dateKey =>
             !overviewSelectedDate
@@ -6174,71 +6874,70 @@ function temperatureOverviewGroupHtml(
         `;
     }
 
-    let items = "";
+    let temperatureItemHtml = "";
 
-    dates.forEach(dateKey => {
-        const data =
-            byDate.get(dateKey);
+    if (dates.length) {
+        const rows = dates.map(dateKey => {
+            const data = byDate.get(dateKey);
 
-        const category =
-            translatedTemperatureCategory(
-                data
-            );
+            const category =
+                translatedTemperatureCategory(data);
 
-        const impact =
-            typeof temperatureImpactRecommendation === "function"
-            ? temperatureImpactRecommendation(data)
-            : null;
+            const impact =
+                typeof temperatureImpactRecommendation === "function"
+                ? temperatureImpactRecommendation(data)
+                : null;
 
-        items += `
+            const detailHtml =
+                overviewSelectedDate && impact
+                ? `
+                    <div class="overview-muted" style="margin-top:7px;">
+                        <b>${t.impacts}:</b> ${impact.impact}
+                    </div>
+                    <div class="overview-muted" style="margin-top:5px;">
+                        <b>${t.recommendations}:</b> ${impact.recommendation}
+                    </div>
+                `
+                : "";
+
+            return `
+                <div class="overview-day-block">
+                    <div class="overview-period">
+                        <b>${formatOverviewDateKey(dateKey)}</b>
+                        — ${formatNumber(data.max_temperature, 1)} °C
+                        — <b>${category}</b>
+                    </div>
+
+                    <div class="overview-period">
+                        ${t.categoryProbability}:
+                        <b>${formatProbability(
+                            data.temperature_category_probability
+                        )}</b>
+                        · ${t.warmestPeriod}:
+                        <b>${data.temperature_warmest_period || "—"}</b>
+                    </div>
+
+                    ${detailHtml}
+                </div>
+            `;
+        }).join("");
+
+        temperatureItemHtml = `
             <div class="overview-risk">
                 <div class="overview-risk-name">
                     ${t.maxTemperature}
                 </div>
-
-                <div class="overview-period">
-                    <b>${formatOverviewDateKey(dateKey)}</b>
-                    — ${formatNumber(data.max_temperature, 1)} °C
-                    — <b>${category}</b>
-                </div>
-
-                <div class="overview-period">
-                    ${t.categoryProbability}:
-                    <b>${formatProbability(
-                        data.temperature_category_probability
-                    )}</b>
-                </div>
-
-                <div class="overview-period">
-                    ${t.warmestPeriod}:
-                    <b>${data.temperature_warmest_period || "—"}</b>
-                </div>
-
-                ${
-                    overviewSelectedDate
-                    && impact
-                    ? `
-                        <div class="overview-muted" style="margin-top:7px;">
-                            <b>${t.impacts}:</b>
-                            ${impact.impact}
-                        </div>
-                        <div class="overview-muted" style="margin-top:5px;">
-                            <b>${t.recommendations}:</b>
-                            ${impact.recommendation}
-                        </div>
-                    `
-                    : ""
-                }
+                ${rows}
             </div>
         `;
-    });
+    }
 
     return `
         <div class="overview-group">
             <div class="overview-group-title">
                 ${t.temperatureGroup}
             </div>
-            ${items}
+            ${temperatureItemHtml}
             ${heatStressHtml}
         </div>
     `;
@@ -6329,7 +7028,7 @@ function renderOverview(forecasts, feature) {
     }
 
     const stormHtml = stormOverviewGroupHtml(
-        displayedForecasts,
+        visibleForecasts,
         municipalityID
     );
 
@@ -6857,7 +7556,8 @@ function openMunicipality(
                             [40,40],
 
                         maxZoom:
-                            11
+                            MAP_VIEW_CONFIG
+                                .municipalitySearchMaxZoom
                     }
                 );
 
@@ -7037,7 +7737,8 @@ function locateUser() {
 
                     map.setView(
                         [lat,lon],
-                        10
+                        MAP_VIEW_CONFIG
+                            .geolocationZoom
                     );
                 }
             },

@@ -642,15 +642,6 @@ function windV2OverviewGroupHtml(
     forecasts.forEach(forecast => {
         if (!forecast) return;
 
-        if (
-            overviewSelectedDate
-            && localDateKeyBelgrade(
-                forecast.valid_time
-            ) !== overviewSelectedDate
-        ) {
-            return;
-        }
-
         const municipality = forecast.municipalities?.[
             municipalityID
         ];
@@ -762,9 +753,19 @@ function windV2OverviewGroupHtml(
         );
     };
 
-    let strongestWindow = windows[0];
+    const shownWindows =
+        filterOverviewWindowsForSelectedDate(
+            windows
+        );
 
-    windows.forEach(window => {
+    if (!shownWindows.length) {
+        if (!overviewShowAll) return "";
+    }
+
+    let strongestWindow =
+        shownWindows[0] || windows[0];
+
+    shownWindows.forEach(window => {
         if (
             window.maxLevel
             > strongestWindow.maxLevel
@@ -773,9 +774,15 @@ function windV2OverviewGroupHtml(
         }
     });
 
-    const periods = windows.map(window => `
+    const periods = shownWindows.map(window => `
         <div class="overview-period">
-            ${formatOverviewInterval(window.start, window.end)}
+            ${formatOverviewInterval(
+                window.start,
+                window.end,
+                {
+                    clipToSelectedDay: true
+                }
+            )}
             — <b>${riskNameForNumber(window.maxLevel)}</b>
             ${Number.isFinite(window.maxP90) && window.maxP90 >= 0
                 ? ` · P90 ${formatNumber(window.maxP90, 1)} m/s`

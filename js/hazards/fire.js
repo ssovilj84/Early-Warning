@@ -145,25 +145,59 @@ async function loadFireHdwRows(hour) {
     return byName;
 }
 
-function fireLeadHourForValidTime(validTime) {
+function fireLeadHourForValidTime(
+    validTime,
+    leadHourOverride = null
+) {
+    const override =
+        Number(leadHourOverride);
+
+    if (Number.isFinite(override)) {
+        return override;
+    }
+
     if (!validTime) return null;
 
     if (typeof displayLeadHour === "function") {
-        const lead = Number(displayLeadHour(validTime));
-        if (Number.isFinite(lead)) return lead;
+        const lead =
+            Number(
+                displayLeadHour(
+                    validTime
+                )
+            );
+
+        if (Number.isFinite(lead)) {
+            return lead;
+        }
     }
 
     return null;
 }
 
-async function applyFireOverlay(data) {
+async function applyFireOverlay(
+    data,
+    leadHourOverride = null
+) {
     if (!data || !geometryData) return data;
 
-    const dateKey = localDateKeyBelgrade(data.valid_time);
-    const fwiDays = await loadFireFwiDailyRows();
-    const fwiRows = dateKey ? fwiDays.get(dateKey) : null;
+    const dateKey =
+        localDateKeyBelgrade(
+            data.valid_time
+        );
 
-    const leadHour = fireLeadHourForValidTime(data.valid_time);
+    const fwiDays =
+        await loadFireFwiDailyRows();
+
+    const fwiRows =
+        dateKey
+        ? fwiDays.get(dateKey)
+        : null;
+
+    const leadHour =
+        fireLeadHourForValidTime(
+            data.valid_time,
+            leadHourOverride
+        );
     const hdwRows = Number.isFinite(leadHour)
         ? await loadFireHdwRows(leadHour)
         : new Map();
@@ -452,6 +486,7 @@ function fireHdwDetailHtml(data, options = {}) {
 
 function fireOverviewGroupHtml(forecasts, municipalityID) {
     const t = translations[currentLanguage];
+
     const relevant = forecasts.filter(forecast => {
         if (!overviewSelectedDate) return true;
         return localDateKeyBelgrade(forecast.valid_time) === overviewSelectedDate;
@@ -465,12 +500,21 @@ function fireOverviewGroupHtml(forecasts, municipalityID) {
         if (!data) return;
 
         const dateKey = localDateKeyBelgrade(forecast.valid_time);
-        if (data.fire_fwi_available && dateKey && !fwiByDate.has(dateKey)) {
+
+        if (
+            data.fire_fwi_available
+            && dateKey
+            && !fwiByDate.has(dateKey)
+        ) {
             fwiByDate.set(dateKey, data);
         }
 
         if (data.fire_hdw_available) {
-            hdwItems.push({ forecast, data, level: fireHdwRiskLevel(data) });
+            hdwItems.push({
+                forecast,
+                data,
+                level: fireHdwRiskLevel(data)
+            });
         }
     });
 
@@ -479,43 +523,92 @@ function fireOverviewGroupHtml(forecasts, municipalityID) {
     }
 
     let fwiHtml = "";
-    Array.from(fwiByDate.keys()).sort().forEach(dateKey => {
-        const data = fwiByDate.get(dateKey);
-        const ir = fireFwiImpactRecommendation(data);
-        fwiHtml += `
+
+    if (fwiByDate.size) {
+        const fwiRows =
+            Array.from(fwiByDate.keys())
+            .sort()
+            .map(dateKey => {
+                const data = fwiByDate.get(dateKey);
+                const ir = fireFwiImpactRecommendation(data);
+
+                return `
+                    <div class="overview-day-block">
+                        <div class="overview-period">
+                            <b>${formatOverviewDateKey(dateKey)}</b>
+                            — ${fireFwiValueLabel(data)}
+                            — <b>${translatedFireFwiCategory(data)}</b>
+                        </div>
+                        ${overviewSelectedDate ? `
+                            <div class="overview-muted" style="margin-top:7px;">
+                                <b>${t.impacts}:</b> ${ir.impact}
+                            </div>
+                            <div class="overview-muted" style="margin-top:5px;">
+                                <b>${t.recommendations}:</b> ${ir.recommendation}
+                            </div>
+                        ` : ""}
+                    </div>
+                `;
+            })
+            .join("");
+
+        fwiHtml = `
             <div class="overview-risk">
                 <div class="overview-risk-name">${t.fireDanger}</div>
-                <div class="overview-period"><b>${formatOverviewDateKey(dateKey)}</b> — ${fireFwiValueLabel(data)} — <b>${translatedFireFwiCategory(data)}</b></div>
-                ${overviewSelectedDate ? `
-                    <div class="overview-muted" style="margin-top:7px;"><b>${t.impacts}:</b> ${ir.impact}</div>
-                    <div class="overview-muted" style="margin-top:5px;"><b>${t.recommendations}:</b> ${ir.recommendation}</div>
-                ` : ""}
-            </div>`;
-    });
+                ${fwiRows}
+            </div>
+        `;
+    }
 
     let hdwHtml = "";
     const significant = hdwItems.filter(item => item.level >= 1);
-    const shown = significant.length ? significant : (overviewShowAll ? hdwItems : []);
+    const shown =
+        significant.length
+        ? significant
+        : (overviewShowAll ? hdwItems : []);
 
     if (shown.length) {
         let periods = "";
+
         shown.forEach(item => {
             periods += `
                 <div class="overview-period">
-                    ${formatOverviewInterval(item.forecast.valid_time, item.forecast.valid_time)}
+                    ${formatOverviewInterval(
+                        item.forecast.valid_time,
+                        item.forecast.valid_time
+                    )}
                     — HDW ${formatNumber(item.data.fire_hdw, 1)}
-                    ${Number.isFinite(Number(item.data.fire_hdw_percentile)) ? ` — P${formatNumber(item.data.fire_hdw_percentile, 0)}` : ""}
+                    ${Number.isFinite(Number(item.data.fire_hdw_percentile))
+                        ? ` — P${formatNumber(item.data.fire_hdw_percentile, 0)}`
+                        : ""}
                     — <b>${translatedFireHdwCategory(item.data)}</b>
-                </div>`;
+                </div>
+            `;
         });
 
         let details = "";
+
         if (overviewSelectedDate && shown.length) {
-            const strongest = shown.reduce((best, item) => !best || item.level > best.level ? item : best, null);
-            const ir = fireHdwImpactRecommendation(strongest.data);
+            const strongest =
+                shown.reduce(
+                    (best, item) =>
+                        !best || item.level > best.level
+                        ? item
+                        : best,
+                    null
+                );
+
+            const ir =
+                fireHdwImpactRecommendation(strongest.data);
+
             details = `
-                <div class="overview-muted" style="margin-top:7px;"><b>${t.impacts}:</b> ${ir.impact}</div>
-                <div class="overview-muted" style="margin-top:5px;"><b>${t.recommendations}:</b> ${ir.recommendation}</div>`;
+                <div class="overview-muted" style="margin-top:7px;">
+                    <b>${t.impacts}:</b> ${ir.impact}
+                </div>
+                <div class="overview-muted" style="margin-top:5px;">
+                    <b>${t.recommendations}:</b> ${ir.recommendation}
+                </div>
+            `;
         }
 
         hdwHtml = `
@@ -523,7 +616,8 @@ function fireOverviewGroupHtml(forecasts, municipalityID) {
                 <div class="overview-risk-name">${t.fireSpread}</div>
                 ${periods}
                 ${details}
-            </div>`;
+            </div>
+        `;
     }
 
     return `
@@ -531,5 +625,6 @@ function fireOverviewGroupHtml(forecasts, municipalityID) {
             <div class="overview-group-title">${t.fireGroup}</div>
             ${fwiHtml}
             ${hdwHtml}
-        </div>`;
+        </div>
+    `;
 }
