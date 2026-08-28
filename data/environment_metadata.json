@@ -1,7 +1,7 @@
 {
   "project": "MeteoRisk",
   "source": "CAMS Europe + CAMS Global via Open-Meteo Air Quality API",
-  "processed_utc": "2026-08-25T11:04:17.070791+00:00",
+  "processed_utc": "2026-08-28T17:21:03.231491+00:00",
   "air_quality": "web\\data\\air_quality\\air_quality_3h.csv",
   "uv": "web\\data\\uv\\uv_3h.csv",
   "air_quality_rule": "Worst European AQI pollutant sub-index determines module risk. EEA Good+Fair -> GREEN, Moderate -> YELLOW, Poor -> ORANGE, Very poor -> RED, Extremely poor -> PURPLE.",
