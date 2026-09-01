@@ -43,7 +43,7 @@ Copy these files/folders into the existing `web` directory while keeping the exi
 Then:
 
 ```cmd
-cd C:\Users\ssovi\OneDrive\EarlyWarning\web
+cd C:\MeteoRisk\web
 py -m http.server 8000
 ```
 
